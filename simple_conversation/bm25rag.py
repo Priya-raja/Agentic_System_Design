@@ -101,3 +101,8 @@ if __name__ == "__main__":
             last_msg = step["messages"][-1]
             if not getattr(last_msg, "tool_calls", None):
                 print(f"Agent: {last_msg.content}")
+
+
+
+
+                
