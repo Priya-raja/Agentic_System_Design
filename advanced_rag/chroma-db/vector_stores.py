@@ -72,7 +72,7 @@ def similarity_search_with_scores():
             
     # Perform similarity search
 
-    query = "Explain vector store?"
+    query = "What databases are available for vector storage?"
 
     results_with_scores = vectorstore.similarity_search_with_score(query, k=3)
 
@@ -83,14 +83,32 @@ def similarity_search_with_scores():
                 f"Result {i+1}: {doc.page_content} (Score: {final_score:.4f}, Source: {doc.metadata['source']})"
             )
 
+def metadata_filtering():
+     vectorestore = Chroma.from_documents(documents=SAMPLE_DOCS, embedding= embeddings_model,persist_directory=new_folder)
+     print(f"Vector store created {vectorestore._collection.count()} documents and persisted.")
 
+     query = "What database is available"
+     results_wo_metadata_filtering = vectorestore.similarity_search(query, k=5)
+     for i, doc in enumerate(results_wo_metadata_filtering):
+            print(f"Result wo {i+1}: {doc.page_content} (Source: {doc.metadata['source']})")
+
+        # Filter by metadata
+     metadata_filter = {"topic": "database"}
+     
+
+     results = vectorestore.similarity_search(query, k=5, filter=metadata_filter)
+     print(f"\n\n")
+     print(f"Top  results for query '{query}' with metadata filter {metadata_filter}:")
+     for i, doc in enumerate(results):
+            print(f"Result {i+1}: {doc.page_content} (Source: {doc.metadata['source']})")
+     
 
 
 
 if __name__ == "__main__":
     # chroma_basics()
-    similarity_search_with_scores()
-    # metadata_filtering()
+    # similarity_search_with_scores()
+    metadata_filtering()
     # as_retriever()
     # persist_chroma()
     # exercise_vector_store_setup()
