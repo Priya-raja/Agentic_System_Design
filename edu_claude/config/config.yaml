@@ -1,0 +1,14 @@
+app:
+  name: Edu Claude
+  version: 0.1.0
+  environment: development
+
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-20250514
+
+logging:
+  level: INFO
+
+memory:
+  enabled: true
