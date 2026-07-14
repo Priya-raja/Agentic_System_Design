@@ -50,9 +50,7 @@ class TaskState(BaseModel):
     output: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
 
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC)
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     started_at: datetime | None = None
     completed_at: datetime | None = None
     heartbeat_at: datetime | None = None

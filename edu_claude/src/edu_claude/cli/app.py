@@ -46,14 +46,13 @@ def main() -> None:
     configure_logging()
     logger = get_logger(__name__)
 
-   
     logger.info(
-            "application_started",
-            app_name=settings.app.name,
-            version=settings.app.version,
-            environment=settings.app.environment,
-            llm_provider=settings.llm.provider,
-            llm_model=settings.llm.model,
-        )
+        "application_started",
+        app_name=settings.app.name,
+        version=settings.app.version,
+        environment=settings.app.environment,
+        llm_provider=settings.llm.provider,
+        llm_model=settings.llm.model,
+    )
 
     show_startup_panel()

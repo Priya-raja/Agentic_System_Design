@@ -36,14 +36,11 @@ class WorkflowDefinition(BaseModel):
             if missing:
                 missing_ids = ", ".join(str(item) for item in missing)
                 raise ValueError(
-                    f"Task '{task.name}' has missing dependencies: "
-                    f"{missing_ids}"
+                    f"Task '{task.name}' has missing dependencies: {missing_ids}"
                 )
 
             if task.id in task.dependencies:
-                raise ValueError(
-                    f"Task '{task.name}' cannot depend on itself"
-                )
+                raise ValueError(f"Task '{task.name}' cannot depend on itself")
 
         return self
 
@@ -55,9 +52,7 @@ class WorkflowState(BaseModel):
     status: WorkflowStatus = WorkflowStatus.CREATED
     task_states: dict[UUID, TaskState] = Field(default_factory=dict)
 
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC)
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     started_at: datetime | None = None
     completed_at: datetime | None = None
     error: str | None = None
