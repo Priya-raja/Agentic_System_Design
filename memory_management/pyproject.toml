@@ -13,6 +13,7 @@ dependencies = [
     "langchain-openai>=1.3.0",
     "langchain-text-splitters>=1.1.2",
     "langgraph>=1.2.4",
+    "langgraph-checkpoint-mongodb>=0.4.0",
     "python-dotenv>=1.2.2",
     "sentence-transformers>=5.5.1",
 ]
