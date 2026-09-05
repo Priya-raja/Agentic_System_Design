@@ -1,0 +1,11 @@
+.env
+.chromadb/
+
+__pycache__/
+*.pyc
+*.pyo
+
+.venv/
+venv/
+# Poetry
+poetry.lock

@@ -1,0 +1,14 @@
+embeddings:
+  provider: openai
+  model: text-embedding-3-small
+
+chromadb:
+  persist_directory: ./db
+  collection_name: codebase
+
+elasticsearch:
+  url: http://localhost:9200
+  host: localhost
+  port: 9200
+  index_name: codebase  
+    
