@@ -44,11 +44,6 @@ def chunk_code(docs: list) -> list:
     return splitter.split_documents(docs)
 
 
-
-
-
-
-
 def build_vector_store(chunks: list) -> Chroma:
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     vector_store = Chroma.from_documents(chunks, embeddings)
@@ -80,9 +75,6 @@ if __name__ == "__main__":
    parser.add_argument("--repo", default=str(Path(__file__).parent.parent / "sample_project"))
    args = parser.parse_args()
    repo_path = str(Path(args.repo).resolve())
-
-
-
 
    docs = load_codebase(repo_path)
    chunks = chunk_code(docs)
