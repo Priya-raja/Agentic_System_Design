@@ -12,3 +12,7 @@ elasticsearch:
   port: 9200
   index_name: codebase  
     
+llm:
+  provider: openai
+  model: gpt-4o-mini
+   

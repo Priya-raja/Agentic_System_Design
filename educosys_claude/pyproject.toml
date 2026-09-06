@@ -12,7 +12,11 @@ dependencies = [
     "chromadb (>=1.5.9,<2.0.0)",
     "rich (>=15.0.0,<16.0.0)",
     "pydantic (>=2.13.5,<3.0.0)",
-    "pyyaml (>=6.0.3,<7.0.0)"
+    "pyyaml (>=6.0.3,<7.0.0)",
+    "langchain (>=1.4.0,<2.0.0) ; python_version >= \"3.14\" and python_full_version < \"4.0.0\"",
+    "langchain-openai (>=1.6.0,<2.0.0) ; python_version >= \"3.14\" and python_full_version < \"4.0.0\"",
+    "langchain-anthropic (>=1.7.1,<2.0.0) ; python_version >= \"3.14\" and python_full_version < \"4.0.0\"",
+    "langchain-huggingface (>=1.2.2,<2.0.0) ; python_version >= \"3.14\" and python_full_version < \"4.0.0\""
 ]
 [tool.poetry]
 packages = [{include = "educosys_claude"}]
@@ -25,3 +29,5 @@ educosys-claude = "educosys_claude.main:run"
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+requires-python = ">=3.14,<4.0.0"
