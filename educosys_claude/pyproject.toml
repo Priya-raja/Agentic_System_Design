@@ -5,7 +5,7 @@ description = "A coding harness similar to claude code"
 authors = [
     {name = "Priya Raja",email = "priya.thevar89@gmail.com"}
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.12,<4.0.0"
 dependencies = [
     "python-dotenv (>=1.2.3,<2.0.0)",
     "openai (>=3.8.0,<4.0.0)",
@@ -16,7 +16,9 @@ dependencies = [
     "langchain (>=1.4.0,<2.0.0) ; python_version >= \"3.14\" and python_full_version < \"4.0.0\"",
     "langchain-openai (>=1.6.0,<2.0.0) ; python_version >= \"3.14\" and python_full_version < \"4.0.0\"",
     "langchain-anthropic (>=1.7.1,<2.0.0) ; python_version >= \"3.14\" and python_full_version < \"4.0.0\"",
-    "langchain-huggingface (>=1.2.2,<2.0.0) ; python_version >= \"3.14\" and python_full_version < \"4.0.0\""
+    "langchain-huggingface (>=1.2.2,<2.0.0) ; python_version >= \"3.14\" and python_full_version < \"4.0.0\"",
+    "tree-sitter (==0.21.3)",
+    "tree-sitter-languages (==1.10.2)"
 ]
 [tool.poetry]
 packages = [{include = "educosys_claude"}]
