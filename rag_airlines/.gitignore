@@ -1,0 +1,14 @@
+.env
+.venv/
+.DS_Store
+qdrant_db/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+.coverage
+.chromadb/
+
+__pycache__/
+*.pyc
+*.pyo

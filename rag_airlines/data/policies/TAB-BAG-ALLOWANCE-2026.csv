@@ -1,0 +1,4 @@
+Cabin,Fare family,Checked baggage,Cabin baggage,Gold addition,Single bag limit
+Economy,Saver,"1 bag, 20 kg","1 bag, 7 kg + personal item",+5 kg if eligible,32 kg
+Economy,Flex,"1 bag, 25 kg","1 bag, 7 kg + personal item",+5 kg if eligible,32 kg
+Business,Business,"40 kg total, max 2 bags","2 bags, 14 kg combined",+5 kg if eligible,32 kg per bag

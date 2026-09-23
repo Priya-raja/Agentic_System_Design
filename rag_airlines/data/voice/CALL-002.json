@@ -1,0 +1,28 @@
+{
+  "call_id": "CALL-002",
+  "customer_id": "CUST-1002",
+  "pnr": "AN0002K",
+  "audio_status": "script_only",
+  "language": "en",
+  "synthetic": true,
+  "turns": [
+    {
+      "speaker": "customer",
+      "start_seconds": 0,
+      "end_seconds": 6,
+      "text": "My flight was cancelled overnight. Is the hotel reimbursed?"
+    },
+    {
+      "speaker": "agent",
+      "start_seconds": 7,
+      "end_seconds": 13,
+      "text": "Was accommodation offered, and do you have authorisation to book it yourself?"
+    },
+    {
+      "speaker": "customer",
+      "start_seconds": 14,
+      "end_seconds": 20,
+      "text": "They offered me a room but I chose another hotel."
+    }
+  ]
+}

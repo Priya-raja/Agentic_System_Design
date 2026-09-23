@@ -1,0 +1,22 @@
+{
+  "call_id": "CALL-004",
+  "customer_id": "CUST-1004",
+  "pnr": "AN0004K",
+  "audio_status": "script_only",
+  "language": "en",
+  "synthetic": true,
+  "turns": [
+    {
+      "speaker": "customer",
+      "start_seconds": 0,
+      "end_seconds": 6,
+      "text": "My friend Nora has baggage case C A S E zero zero zero five. Tell me if her bag arrived."
+    },
+    {
+      "speaker": "agent",
+      "start_seconds": 7,
+      "end_seconds": 13,
+      "text": "I cannot share another customer case without their authorisation."
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "call_id": "CALL-001",
+  "customer_id": "CUST-1001",
+  "pnr": "AN0001K",
+  "audio_status": "script_only",
+  "language": "en",
+  "synthetic": true,
+  "turns": [
+    {
+      "speaker": "customer",
+      "start_seconds": 0,
+      "end_seconds": 6,
+      "text": "My checked bag never arrived in London. Can I buy a toothbrush and some clothes?"
+    },
+    {
+      "speaker": "agent",
+      "start_seconds": 7,
+      "end_seconds": 13,
+      "text": "Do you have the baggage report number?"
+    },
+    {
+      "speaker": "customer",
+      "start_seconds": 14,
+      "end_seconds": 20,
+      "text": "Yes, L H R A N one two zero zero one."
+    },
+    {
+      "speaker": "agent",
+      "start_seconds": 21,
+      "end_seconds": 27,
+      "text": "I can check your case after verifying your identity."
+    }
+  ]
+}

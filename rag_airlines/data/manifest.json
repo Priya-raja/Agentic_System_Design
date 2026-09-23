@@ -1,0 +1,142 @@
+[
+  {
+    "path": "README.md",
+    "sha256": "ea5ce78e001188a6b5f471f0f7f2863f8f849bc3566e61f1a6574130327bc006",
+    "bytes": 2484
+  },
+  {
+    "path": "crm/baggage_cases.jsonl",
+    "sha256": "0563fa0c2c7804c6bd27c2efd393e84437f384c2b0c5049bb7c873f065e14f4b",
+    "bytes": 2352
+  },
+  {
+    "path": "crm/bookings.jsonl",
+    "sha256": "34e32ec850483f41a5d0ffac87e10583ea71dfa63b2d8f5abad3cfb9b083941b",
+    "bytes": 6021
+  },
+  {
+    "path": "crm/customers.jsonl",
+    "sha256": "2ef208d5379f5ccdbc96687bee0dfe1f795901d37449e5a087864ccc765ecdc7",
+    "bytes": 3396
+  },
+  {
+    "path": "crm/flight_disruptions.jsonl",
+    "sha256": "56853823146e292eb312fd661f0c3238202acc18ff17e2a50a36a708d04d1f01",
+    "bytes": 647
+  },
+  {
+    "path": "evaluation/seed_questions.jsonl",
+    "sha256": "c8159ba0c95c4af137f39e8f7572e9544eb7939d4e6dad52574c163b3c0d707c",
+    "bytes": 5041
+  },
+  {
+    "path": "policies/CAT-CABIN-MENU-2026.pdf",
+    "sha256": "cebf17fd37e50321633efc2f740677e759c88c135ddb39b4d84fcb5d8cb1f76e",
+    "bytes": 456618
+  },
+  {
+    "path": "policies/IMG-BAG-UPDATE-2026.png",
+    "sha256": "7f020213c68247dcf7a35029cd5a97c609193c6314101dc4f6889382a6f358be",
+    "bytes": 2189231
+  },
+  {
+    "path": "policies/POL-BAG-2025.pdf",
+    "sha256": "f20e3e084b6415e554782f9a9911e82e2e319ba581e053238616b2f8b467bcc3",
+    "bytes": 44559
+  },
+  {
+    "path": "policies/POL-BAG-2026.pdf",
+    "sha256": "ce5d93d91cc5057e3125974d09f7e00eaec0b5e0994c99985cacac3509de9445",
+    "bytes": 44840
+  },
+  {
+    "path": "policies/POL-CLAIM-2026.pdf",
+    "sha256": "edb4648ed140e321f1b7d14a1dbf2f3ffe3cef146d4ad17ebabad63c06d7fc7a",
+    "bytes": 44689
+  },
+  {
+    "path": "policies/POL-DIS-2026.pdf",
+    "sha256": "9b476505d58a1b4b456828c31a4aaefedb3725fe0586eda667e82329582ef35c",
+    "bytes": 44588
+  },
+  {
+    "path": "policies/TAB-BAG-ALLOWANCE-2026.csv",
+    "sha256": "3e67ab33e986ca86cc739a11e43bcd1ee1f16f7ef2ba21007c839c474ec12908",
+    "bytes": 349
+  },
+  {
+    "path": "policies/TAB-BAG-ALLOWANCE-2026.pdf",
+    "sha256": "a45dc4a0dcc0879814a7f259bfe7e28a1ee7a9a6a5234dadca23fe47f6e65a1f",
+    "bytes": 44400
+  },
+  {
+    "path": "policies/business.jpg",
+    "sha256": "8d9eacee26d54ad284a9a2712529ef105a85b0009dfb876b15ac9aadb40b7664",
+    "bytes": 70265
+  },
+  {
+    "path": "policies/economy.jpg",
+    "sha256": "c2432323c356ad47318f9bc90965a13d6a783ed8ec4391afbc644452ef9efbd4",
+    "bytes": 84162
+  },
+  {
+    "path": "policies/meal.jpg",
+    "sha256": "b20a4d72e6038e5dd6d5907b1f2bb132bbf1708fbfa092548b35fd6cc97ce17f",
+    "bytes": 88104
+  },
+  {
+    "path": "policies/premium.jpg",
+    "sha256": "b8c5937094ec5447262ba4ecca7562b1da4c944602b80cdc13e7c348bf1260d6",
+    "bytes": 85162
+  },
+  {
+    "path": "voice/CALL-001.json",
+    "sha256": "deef084aaf34ad977434e43716e06332b6199291e9084c7205736e01fe9f7ce5",
+    "bytes": 811
+  },
+  {
+    "path": "voice/CALL-002.json",
+    "sha256": "666f2ab3db17e250aaa388e5f7170c1c71be1970c8215046ed508ab14a8d2fa2",
+    "bytes": 681
+  },
+  {
+    "path": "voice/CALL-003.json",
+    "sha256": "86df634a42bb1f92fd45a0c69e3032167b17e8742241b36892cd061b138c3da3",
+    "bytes": 523
+  },
+  {
+    "path": "voice/CALL-004.json",
+    "sha256": "896dcde79d53e5a855bf414aa36e0274db26423409c1c13619e47d0f6df45e1c",
+    "bytes": 538
+  },
+  {
+    "path": "web/WEB-001.md",
+    "sha256": "dd32e512e79a8c12048247920c0ffc7f3edd4616d5dae1744134a840347b2f40",
+    "bytes": 491
+  },
+  {
+    "path": "web/WEB-002.md",
+    "sha256": "e0a899d93793e5660939daf941bba4996b5514be2c1241cdc1533a6ce5d2aafe",
+    "bytes": 393
+  },
+  {
+    "path": "web/WEB-003.md",
+    "sha256": "917abec8689c4e94db957e185bc3494987c2cf8eb0cb1918b04ad6e4e35439e0",
+    "bytes": 457
+  },
+  {
+    "path": "web/WEB-004.md",
+    "sha256": "22c1f40d2849a882a2932f699124f1d0c0d19347ac3421b4030ef736d29ab22f",
+    "bytes": 427
+  },
+  {
+    "path": "web/WEB-005.md",
+    "sha256": "8590429b61c018259ac5087456de195df12361efb6b75ea9d9214e582d36d56e",
+    "bytes": 451
+  },
+  {
+    "path": "web/WEB-006.md",
+    "sha256": "4d49511409aa4f51f9dc5e02dddb36b9c4a4afe7fde86efce12cd3c56925d1a8",
+    "bytes": 391
+  }
+]

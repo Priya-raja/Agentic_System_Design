@@ -1,0 +1,3 @@
+{"disruption_id": "DIS-001", "flight_number": "AN201", "departure_date": "2026-10-02", "cause": "crew scheduling", "overnight": true, "hotel_offered": false, "self_booking_authorisation": "AUTH-8831", "synthetic": true}
+{"disruption_id": "DIS-002", "flight_number": "AN202", "departure_date": "2026-10-03", "cause": "weather", "overnight": true, "hotel_offered": true, "self_booking_authorisation": null, "synthetic": true}
+{"disruption_id": "DIS-003", "flight_number": "AN203", "departure_date": "2026-10-04", "cause": "air traffic restrictions", "overnight": false, "hotel_offered": false, "self_booking_authorisation": null, "synthetic": true}

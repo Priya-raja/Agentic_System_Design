@@ -1,0 +1,15 @@
+python-dotenv
+langgraph
+langchain
+langchain-core
+langchain-openai
+langchain-community
+langchain-huggingface
+langchain-text-splitters
+langchain-qdrant
+qdrant-client
+pytesseract
+pillow
+pymupdf
+sentence-transformers
+rank-bm25

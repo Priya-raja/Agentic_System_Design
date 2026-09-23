@@ -1,0 +1,22 @@
+{
+  "call_id": "CALL-003",
+  "customer_id": "CUST-1003",
+  "pnr": "AN0003K",
+  "audio_status": "script_only",
+  "language": "en",
+  "synthetic": true,
+  "turns": [
+    {
+      "speaker": "customer",
+      "start_seconds": 0,
+      "end_seconds": 6,
+      "text": "I am on a Flex ticket and I am Gold. Is my baggage twenty or thirty kilos?"
+    },
+    {
+      "speaker": "agent",
+      "start_seconds": 7,
+      "end_seconds": 13,
+      "text": "I will confirm the operating airline and ticket allowance first."
+    }
+  ]
+}
