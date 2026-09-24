@@ -1,5 +1,8 @@
+import json
 import os
 import re
+from datetime import date, datetime
+from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain_community.retrievers import BM25Retriever
@@ -10,10 +13,66 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from prepare_documents import prepare_public_chunks
+from config import (
+    BM25_TOP_K,
+    BM25_WEIGHT,
+    DENSE_TOP_K,
+    DENSE_WEIGHT,
+    FINAL_TOP_K,
+    PRIMARY_AUTHORITY_BOOST,
+    QDRANT_COLLECTION,
+    QDRANT_URL,
+)
+
+QDRANT_URL = QDRANT_URL
+COLLECTION_NAME = QDRANT_COLLECTION
+INDEX_STATE_FILE = Path(__file__).parent / "index_state.json"
 
 
-QDRANT_URL = "http://localhost:6333"
-COLLECTION_NAME = "aeronova_public_knowledge"
+def build_source_state(chunks: list[Document]) -> dict[str, str]:
+    return {
+        chunk.metadata["source_file"]: chunk.metadata["content_hash"]
+        for chunk in chunks
+    }
+
+
+def ensure_index_is_fresh(chunks: list[Document]) -> None:
+    """Stop retrieval when Qdrant and local corpus may be out of sync."""
+
+    if not INDEX_STATE_FILE.exists():
+        raise RuntimeError(
+            "index_state.json is missing. Run build_index.py before "
+            "retrieval."
+        )
+
+    index_state = json.loads(
+        INDEX_STATE_FILE.read_text(encoding="utf-8")
+    )
+
+    if index_state.get("collection_name") != COLLECTION_NAME:
+        raise RuntimeError(
+            "The index state belongs to a different Qdrant collection. "
+            "Run build_index.py again."
+        )
+
+    indexed_documents = index_state.get("documents", {})
+    current_documents = build_source_state(chunks)
+
+    if indexed_documents != current_documents:
+        changed = sorted(
+            source_file
+            for source_file in (
+                indexed_documents.keys() | current_documents.keys()
+            )
+            if indexed_documents.get(source_file)
+            != current_documents.get(source_file)
+        )
+
+        raise RuntimeError(
+            "The AeroNova corpus changed after the Qdrant index was "
+            "built. Run build_index.py again. Changed sources: "
+            + ", ".join(changed)
+        )
 
 
 def extract_policy_year(question: str) -> int | None:
@@ -25,6 +84,58 @@ def extract_policy_year(question: str) -> int | None:
         return int(match.group())
 
     return None
+
+
+def extract_requested_date(question: str) -> date | None:
+    """Extract a month/year or year from a question."""
+
+    month_names = {
+        "january": 1,
+        "february": 2,
+        "march": 3,
+        "april": 4,
+        "may": 5,
+        "june": 6,
+        "july": 7,
+        "august": 8,
+        "september": 9,
+        "october": 10,
+        "november": 11,
+        "december": 12,
+    }
+
+    lowered = question.lower()
+    year = extract_policy_year(question)
+
+    if year is None:
+        return None
+
+    for month_name, month_number in month_names.items():
+        if month_name in lowered:
+            return date(year, month_number, 1)
+
+    return date(year, 1, 1)
+
+
+def document_is_valid_for_date(
+    document: Document,
+    requested_date: date | None,
+) -> bool:
+    """Reject documents outside their declared validity window."""
+
+    if requested_date is None:
+        return True
+
+    valid_from = document.metadata.get("valid_from")
+    valid_to = document.metadata.get("valid_to")
+
+    if not valid_from or not valid_to:
+        return False
+
+    start = datetime.strptime(valid_from, "%Y-%m-%d").date()
+    end = datetime.strptime(valid_to, "%Y-%m-%d").date()
+
+    return start <= requested_date <= end
 
 
 def filter_chunks_by_year(
@@ -95,7 +206,7 @@ def reciprocal_rank_fusion(
         reverse=True,
     )
 
-    return [
+    ranked_results = [
         (
             documents_by_id[chunk_id],
             fused_scores[chunk_id],
@@ -103,17 +214,38 @@ def reciprocal_rank_fusion(
         for chunk_id in ranked_chunk_ids
     ]
 
+    # A small deterministic authority boost keeps official policies and
+    # tables above blogs when their relevance is otherwise nearly equal.
+    boosted_results = [
+        (
+            document,
+            score + (
+                PRIMARY_AUTHORITY_BOOST
+                if document.metadata.get("authority") == "primary"
+                else 0.0
+            ),
+        )
+        for document, score in ranked_results
+    ]
+
+    return sorted(
+        boosted_results,
+        key=lambda item: item[1],
+        reverse=True,
+    )
+
 
 
 def hybrid_retrieve(
     question: str,
     chunks: list[Document],
     vector_store,
-    dense_k: int = 10,
-    bm25_k: int = 10,
-    final_k: int = 5,
+    dense_k: int = DENSE_TOP_K,
+    bm25_k: int = BM25_TOP_K,
+    final_k: int = FINAL_TOP_K,
 ) -> list[tuple[Document, float]]:
     year = extract_policy_year(question)
+    requested_date = extract_requested_date(question)
 
     # -----------------------------
     # Dense retrieval from Qdrant
@@ -133,6 +265,10 @@ def hybrid_retrieve(
         document
         for document, similarity_score
         in dense_results_with_scores
+        if document_is_valid_for_date(
+            document,
+            requested_date,
+        )
     ]
 
     # -----------------------------
@@ -143,6 +279,15 @@ def hybrid_retrieve(
         chunks=chunks,
         year=year,
     )
+
+    eligible_chunks = [
+        chunk
+        for chunk in eligible_chunks
+        if document_is_valid_for_date(
+            chunk,
+            requested_date,
+        )
+    ]
 
     bm25_documents = []
 
@@ -163,12 +308,21 @@ def hybrid_retrieve(
             bm25_documents,
         ],
         weights=[
-            0.6,  # Qdrant
-            0.4,  # BM25
+            DENSE_WEIGHT,  # Qdrant
+            BM25_WEIGHT,  # BM25
         ],
     )
 
     return fused_results[:final_k]
+
+
+def has_primary_evidence(
+    results: list[tuple[Document, float]],
+) -> bool:
+    return any(
+        document.metadata.get("authority") == "primary"
+        for document, score in results
+    )
 
 
 def create_vector_store() -> QdrantVectorStore:
@@ -222,6 +376,15 @@ def print_result(
         f"{metadata.get('policy_year', 'unknown')}"
     )
     print(
+        f"Authority: "
+        f"{metadata.get('authority', 'unknown')}"
+    )
+    print(
+        f"Valid: "
+        f"{metadata.get('valid_from', 'unknown')} to "
+        f"{metadata.get('valid_to', 'unknown')}"
+    )
+    print(
         f"Chunk ID: "
         f"{metadata.get('chunk_id', 'unknown')}"
     )
@@ -242,6 +405,8 @@ def main() -> None:
     chunks = prepare_public_chunks()
 
     print(f"Chunks available to BM25: {len(chunks)}")
+
+    ensure_index_is_fresh(chunks)
 
     vector_store = create_vector_store()
 
@@ -276,6 +441,14 @@ def main() -> None:
             else:
                 print("No relevant documents found.")
 
+            continue
+
+        if not has_primary_evidence(results):
+            print(
+                "Secondary material was found, but no applicable "
+                "primary policy supports the answer. Refusing to "
+                "fall back silently."
+            )
             continue
 
         for position, (document, score) in enumerate(

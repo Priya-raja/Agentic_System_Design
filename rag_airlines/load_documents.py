@@ -1,26 +1,59 @@
 import json
+import hashlib
 from pathlib import Path
-
 import pytesseract
 from PIL import Image
-
 from langchain_community.document_loaders import PyMuPDFLoader
-
 from langchain_core.documents import Document
 
 CORPUS_ROOT = Path(
     "/Users/priyaraja/projects/Agentic_System_Design/"
     "rag_airlines/data"
 )
+PDF_METADATA_TO_REMOVE = {
+    "producer",
+    "creator",
+    "creationdate",
+    "moddate",
+    "modDate",
+    "creationDate",
+    "trapped",
+}
+
+
+def file_freshness_metadata(file_path: Path) -> dict:
+    """Return stable metadata used to detect changed source files."""
+
+    content_hash = hashlib.sha256(
+        file_path.read_bytes()
+    ).hexdigest()
+
+    return {
+        "content_hash": content_hash,
+        "source_modified_at": file_path.stat().st_mtime,
+    }
 
 
 def load_pdf(file_path: Path) -> list[Document]:
     loader = PyMuPDFLoader(str(file_path))
     documents = loader.load()
+    freshness = file_freshness_metadata(file_path)
 
     for document in documents:
 
-        page_index = document.metadata.get("page", 0)
+        for key in PDF_METADATA_TO_REMOVE:
+            document.metadata.pop(
+                key,
+                None,
+            )
+        document.metadata.pop("source", None)
+        document.metadata.pop("file_path", None)
+
+        page_index = document.metadata.get(
+            "page",
+            0,
+        )
+
         document.metadata.update(
             {
                 "document_id": file_path.stem,
@@ -28,6 +61,7 @@ def load_pdf(file_path: Path) -> list[Document]:
                 "source_type": "pdf",
                 "corpus_folder": file_path.parent.name,
                 "page": page_index + 1,
+                **freshness,
             }
         )
 
@@ -35,6 +69,7 @@ def load_pdf(file_path: Path) -> list[Document]:
 
 def load_image(file_path: Path) -> list[Document]:
     image = Image.open(file_path)
+    freshness = file_freshness_metadata(file_path)
 
     extracted_text = pytesseract.image_to_string(
         image,
@@ -51,11 +86,13 @@ def load_image(file_path: Path) -> list[Document]:
                 "corpus_folder": file_path.parent.name,
                 "image_path": str(file_path),
                 "page": 1,
+                **freshness,
             },
         )
     ]
 def load_markdown(file_path: Path) -> list[Document]:
     content = file_path.read_text(encoding="utf-8")
+    freshness = file_freshness_metadata(file_path)
 
     return [
         Document(
@@ -65,11 +102,13 @@ def load_markdown(file_path: Path) -> list[Document]:
                 "source_file": file_path.name,
                 "source_type": "markdown",
                 "corpus_folder": file_path.parent.name,
+                **freshness,
             },
         )
     ]
 def load_json(file_path: Path) -> list[Document]:
     content = file_path.read_text(encoding="utf-8")
+    freshness = file_freshness_metadata(file_path)
 
     return [
         Document(
@@ -79,11 +118,13 @@ def load_json(file_path: Path) -> list[Document]:
                 "source_file": file_path.name,
                 "source_type": "json",
                 "corpus_folder": file_path.parent.name,
+                **freshness,
             },
         )
     ]
 def load_jsonl(file_path: Path) -> list[Document]:
     documents = []
+    freshness = file_freshness_metadata(file_path)
 
     with file_path.open(encoding="utf-8") as file:
         for line_number, line in enumerate(file, start=1):
@@ -115,6 +156,7 @@ def load_jsonl(file_path: Path) -> list[Document]:
                         "source_type": "jsonl",
                         "corpus_folder": file_path.parent.name,
                         "line_number": line_number,
+                        **freshness,
                     },
                 )
             )

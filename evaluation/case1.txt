@@ -1,0 +1,17 @@
+{
+  "question": "What was the baggage allowance policy for Econoly flex in November 2025?",
+  "expected_answer": "One checked bag up to 20 kg and one cabin bag up to 7 kg.",
+  "expected_documents": [
+    "POL-BAG-2025"
+  ],
+  "expected_chunks": [
+    "POL-BAG-2025-page-1-chunk-3",
+    "POL-BAG-2025-page-1-chunk-4"
+  ],
+  "expected_year": 2025,
+  "tests_typo_robustness": true
+}
+
+I got n November 2025, the Economy Flex class included one checked bag of up to 20 kg and one cabin bag weighing up to 7 kg.
+Sources: - POL-BAG-2025 | POL-BAG-2025.pdf | Page 1 | Chunk POL-BAG-2025-page-1-chunk-3 - POL-BAG-2025 | POL-BAG-2025.pdf | Page 1
+| Chunk POL-BAG-2025-page-1-chunk-4

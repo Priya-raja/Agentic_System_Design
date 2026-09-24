@@ -1,4 +1,5 @@
 import re
+from datetime import date
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -18,6 +19,12 @@ SKIP_FILES = {
 ALLOWED_IMAGE_FILES = {
     "IMG-BAG-UPDATE-2026.png",
 }
+
+PRIMARY_DOCUMENT_PREFIXES = (
+    "POL-",
+    "TAB-",
+    "CAT-",
+)
 
 
 def extract_document_year(
@@ -45,6 +52,81 @@ def extract_document_year(
         return int(content_match.group())
 
     return None
+
+
+def determine_authority(
+    document_id: str,
+    content: str,
+) -> str:
+    """Classify sources so official policies outrank summaries."""
+
+    authority_match = re.search(
+        r"^authority:\s*([a-z]+)\s*$",
+        content,
+        flags=re.IGNORECASE | re.MULTILINE,
+    )
+
+    if authority_match:
+        return authority_match.group(1).lower()
+
+    if document_id.startswith(PRIMARY_DOCUMENT_PREFIXES):
+        return "primary"
+
+    return "secondary"
+
+
+def determine_status(content: str, policy_year: int | None) -> str:
+    """Read an explicit status or infer a simple corpus status."""
+
+    status_match = re.search(
+        r"Status:\s*([A-Za-z_-]+)",
+        content,
+        flags=re.IGNORECASE,
+    )
+
+    if status_match:
+        return status_match.group(1).lower()
+
+    if policy_year is not None and policy_year < date.today().year:
+        return "historical"
+
+    return "active"
+
+
+def determine_version(content: str) -> str | None:
+    version_match = re.search(
+        r"Version:\s*([0-9.]+)",
+        content,
+        flags=re.IGNORECASE,
+    )
+
+    return version_match.group(1) if version_match else None
+
+
+def determine_validity_dates(
+    content: str,
+    policy_year: int | None,
+) -> tuple[str | None, str | None]:
+    """Return ISO validity dates, preferring dates printed in the document."""
+
+    iso_range = re.search(
+        r"Effective:\s*(\d{4}-\d{2}-\d{2})\s+to\s+"
+        r"(\d{4}-\d{2}-\d{2})",
+        content,
+        flags=re.IGNORECASE,
+    )
+
+    if iso_range:
+        return iso_range.group(1), iso_range.group(2)
+
+    if policy_year is None:
+        return None, None
+
+    # The fictional corpus currently publishes annual policy versions.
+    return (
+        f"{policy_year}-01-01",
+        f"{policy_year}-12-31",
+    )
 
 
 def clean_ocr_text(text: str) -> str:
@@ -114,6 +196,7 @@ def select_public_documents(
             continue
 
         metadata_copy = metadata.copy()
+        document_id = metadata_copy.get("document_id", "")
         policy_year = extract_document_year(
             source_file=source_file,
             content=content,
@@ -121,6 +204,30 @@ def select_public_documents(
 
         if policy_year is not None:
             metadata_copy["policy_year"] = policy_year
+
+        valid_from, valid_to = determine_validity_dates(
+            content=content,
+            policy_year=policy_year,
+        )
+
+        metadata_copy.update(
+            {
+                "authority": determine_authority(
+                    document_id=document_id,
+                    content=content,
+                ),
+                "status": determine_status(
+                    content=content,
+                    policy_year=policy_year,
+                ),
+                "valid_from": valid_from,
+                "valid_to": valid_to,
+                "version": determine_version(content),
+            }
+        )
+
+        if document_id == "POL-BAG-2025":
+            metadata_copy["superseded_by"] = "POL-BAG-2026"
 
         selected_documents.append(
             Document(
