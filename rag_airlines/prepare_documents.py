@@ -238,6 +238,49 @@ def select_public_documents(
 
     return selected_documents
 
+# extract topics for metadata filtering
+def determine_chunk_topic(content: str) -> str:
+    text = content.lower()
+
+    if any(
+        phrase in text
+        for phrase in [
+            "onboard menu",
+            "sample menu",
+            "warm meal",
+            "vegetarian meal",
+            "light bite",
+            "dietary needs",
+        ]
+    ):
+        return "menu"
+
+    if any(
+        phrase in text
+        for phrase in [
+            "checked baggage",
+            "cabin baggage",
+            "excess baggage",
+            "single bag",
+            "power banks",
+        ]
+    ):
+        return "baggage"
+
+    if any(
+        phrase in text
+        for phrase in [
+            "seat categories",
+            "seat pitch",
+            "lie-flat",
+            "standard recline",
+            "premium economy",
+        ]
+    ):
+        return "seating"
+
+    return "general"
+
 
 def split_documents(
     documents: list[Document],
@@ -261,12 +304,12 @@ def split_documents(
             "document_id",
             "unknown",
         )
-
         page = chunk.metadata.get("page", 1)
 
         chunk.metadata["chunk_id"] = (
             f"{document_id}-page-{page}-chunk-{position}"
         )
+        chunk.metadata["topic"] = determine_chunk_topic(chunk.page_content)
 
     return chunks
 

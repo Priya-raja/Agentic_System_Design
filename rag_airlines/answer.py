@@ -15,6 +15,7 @@ from retrieve import (
 )
 from config import (
     ANSWER_MODEL,
+    CHEAP_ANSWER_MODEL,
     ANSWER_TEMPERATURE,
     ANSWER_PROMPT_VERSION,
     FINAL_TOP_K,
@@ -23,6 +24,11 @@ from prompt_manager import (
     PromptVersion,
     load_answer_prompt,
 )
+from jev_classifier import (
+    JevRoutingDecision,
+    classify_and_route,
+)
+from observability.observability import setup_tracing
 
 
 class GroundedAnswer(BaseModel):
@@ -155,17 +161,33 @@ def validate_measurements(
     )
 
     return sorted(unsupported)
+# Model routing
+def select_answer_model(
+    routing: JevRoutingDecision,
+) -> str:
+    """
+    Convert JEV's model tier into an allowed model name.
+
+    Anything other than an explicit 'cheap' decision
+    uses the standard model.
+    """
+
+    if routing.model_tier == "cheap":
+        return CHEAP_ANSWER_MODEL
+
+    return ANSWER_MODEL
 
 
 def generate_answer(
     question: str,
     results,
     prompt: PromptVersion,
+    model_name: str,
 ) -> GroundedAnswer:
     context = format_context(results)
 
     llm = ChatOpenAI(
-        model=ANSWER_MODEL,
+        model=model_name,
         temperature=ANSWER_TEMPERATURE,
     )
 
@@ -184,7 +206,7 @@ Return a grounded answer with the exact chunk IDs
 that support it.
 """
 
-    return structured_llm.invoke(
+    raw_response = structured_llm.invoke(
         [
             {
                 "role": "system",
@@ -196,6 +218,11 @@ that support it.
             },
         ]
     )
+
+    if isinstance(raw_response, GroundedAnswer):
+        return raw_response
+
+    return GroundedAnswer.model_validate(raw_response)
 
 
 def print_final_answer(
@@ -243,6 +270,8 @@ def print_final_answer(
 def main() -> None:
     load_dotenv()
 
+    setup_tracing()
+
     if not os.getenv("OPENAI_API_KEY"):
         raise ValueError(
             "OPENAI_API_KEY is missing from .env"
@@ -283,12 +312,15 @@ def main() -> None:
 
         if not question:
             continue
-
+        routing = classify_and_route(question)
+        model_name = select_answer_model(routing)
+        print(f"Selected answer model: {model_name}")
         results = hybrid_retrieve(
             question=question,
             chunks=chunks,
             vector_store=vector_store,
             final_k=FINAL_TOP_K,
+            topic=routing.topic,
         )
 
         if not results:
@@ -322,6 +354,7 @@ def main() -> None:
             question=question,
             results=results,
             prompt=prompt,
+            model_name=model_name
         )
 
         citation_errors = validate_citations(

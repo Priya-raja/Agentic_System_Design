@@ -11,6 +11,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
+from opentelemetry import trace
 
 from prepare_documents import prepare_public_chunks
 from config import (
@@ -23,11 +24,13 @@ from config import (
     QDRANT_COLLECTION,
     QDRANT_URL,
 )
+from jev_classifier import classify_and_route
 
 QDRANT_URL = QDRANT_URL
 COLLECTION_NAME = QDRANT_COLLECTION
 INDEX_STATE_FILE = Path(__file__).parent / "index_state.json"
 
+tracer = trace.get_tracer(__name__)
 
 def build_source_state(chunks: list[Document]) -> dict[str, str]:
     return {
@@ -84,7 +87,47 @@ def extract_policy_year(question: str) -> int | None:
         return int(match.group())
 
     return None
+# Check the topic in question
+def infer_question_topic(question: str) -> str | None:
+    text = question.lower()
 
+    if any(
+        word in text
+        for word in [
+            "meal",
+            "menu",
+            "food",
+            "drink",
+            "vegetarian",
+            "dietary",
+        ]
+    ):
+        return "menu"
+
+    if any(
+        word in text
+        for word in [
+            "baggage",
+            "bag",
+            "luggage",
+            "allowance",
+            "power bank",
+        ]
+    ):
+        return "baggage"
+
+    if any(
+        word in text
+        for word in [
+            "seat",
+            "recline",
+            "seat pitch",
+            "lie-flat",
+        ]
+    ):
+        return "seating"
+
+    return None
 
 def extract_requested_date(question: str) -> date | None:
     """Extract a month/year or year from a question."""
@@ -158,20 +201,35 @@ def filter_chunks_by_year(
     ]
 
 
-def create_qdrant_filter(year: int | None) -> Filter | None:
-    """Create the equivalent year filter for Qdrant."""
+def create_qdrant_filter(
+    year: int | None,
+    topic: str | None,
+) -> Filter | None:
 
-    if year is None:
-        return None
+    """Create the equivalent year and topic filter for Qdrant."""
 
-    return Filter(
-        must=[
+    conditions = []
+
+    if year is not None:
+        conditions.append(
             FieldCondition(
                 key="metadata.policy_year",
                 match=MatchValue(value=year),
             )
-        ]
-    )
+        )
+
+    if topic is not None:
+        conditions.append(
+            FieldCondition(
+                key="metadata.topic",
+                match=MatchValue(value=topic),
+            )
+        )
+
+    if not conditions:
+        return None
+
+    return Filter(must=conditions)
 
 
 # RRF Function for Merging Results from Multiple Retrievers
@@ -243,77 +301,198 @@ def hybrid_retrieve(
     dense_k: int = DENSE_TOP_K,
     bm25_k: int = BM25_TOP_K,
     final_k: int = FINAL_TOP_K,
+    topic: str | None = None
 ) -> list[tuple[Document, float]]:
-    year = extract_policy_year(question)
-    requested_date = extract_requested_date(question)
 
-    # -----------------------------
-    # Dense retrieval from Qdrant
-    # -----------------------------
+    with tracer.start_as_current_span(
+        "aeronova.hybrid_retrieve"
+    ) as span:
+        year = extract_policy_year(question)
+        requested_date = extract_requested_date(question)
+        if topic is None:
+           topic = infer_question_topic(question)
 
-    qdrant_filter = create_qdrant_filter(year)
-
-    dense_results_with_scores = (
-        vector_store.similarity_search_with_score(
-            query=question,
-            k=dense_k,
-            filter=qdrant_filter,
+        span.set_attribute(
+            "rag.question_year",
+            year or 0,
         )
-    )
-
-    dense_documents = [
-        document
-        for document, similarity_score
-        in dense_results_with_scores
-        if document_is_valid_for_date(
-            document,
-            requested_date,
+        span.set_attribute(
+            "rag.question_topic",
+            topic or "unclassified",
         )
-    ]
-
-    # -----------------------------
-    # Keyword retrieval with BM25
-    # -----------------------------
-
-    eligible_chunks = filter_chunks_by_year(
-        chunks=chunks,
-        year=year,
-    )
-
-    eligible_chunks = [
-        chunk
-        for chunk in eligible_chunks
-        if document_is_valid_for_date(
-            chunk,
-            requested_date,
+        span.set_attribute(
+            "rag.dense_top_k",
+            dense_k,
         )
-    ]
-
-    bm25_documents = []
-
-    if eligible_chunks:
-        bm25_retriever = BM25Retriever.from_documents(
-            eligible_chunks
+        span.set_attribute(
+            "rag.bm25_top_k",
+            bm25_k,
         )
-        bm25_retriever.k = bm25_k
-        bm25_documents = bm25_retriever.invoke(question)
 
-    # -----------------------------
-    # Merge both result lists
-    # -----------------------------
+        print(f"Detected topic: {topic}")
 
-    fused_results = reciprocal_rank_fusion(
-        result_lists=[
-            dense_documents,
-            bm25_documents,
-        ],
-        weights=[
-            DENSE_WEIGHT,  # Qdrant
-            BM25_WEIGHT,  # BM25
-        ],
-    )
+        # ---------------------------------
+        # Dense retrieval from Qdrant
+        # ---------------------------------
 
-    return fused_results[:final_k]
+        qdrant_filter = create_qdrant_filter(
+            year=year,
+            topic=topic,
+        )
+
+        dense_results_with_scores = (
+            vector_store.similarity_search_with_score(
+                query=question,
+                k=dense_k,
+                filter=qdrant_filter,
+            )
+        )
+
+        dense_documents = [
+            document
+            for document, similarity_score
+            in dense_results_with_scores
+            if document_is_valid_for_date(
+                document,
+                requested_date,
+            )
+        ]
+
+        span.set_attribute(
+            "rag.dense_result_count",
+            len(dense_documents),
+        )
+
+        span.set_attribute(
+            "rag.dense_chunk_ids",
+            ",".join(
+                document.metadata.get(
+                    "chunk_id",
+                    "unknown",
+                )
+                for document in dense_documents
+            ),
+        )
+
+        # ---------------------------------
+        # Keyword retrieval with BM25
+        # ---------------------------------
+
+        eligible_chunks = filter_chunks_by_year(
+            chunks=chunks,
+            year=year,
+        )
+
+        if topic is not None:
+            eligible_chunks = [
+                chunk
+                for chunk in eligible_chunks
+                if chunk.metadata.get("topic") == topic
+            ]
+
+        eligible_chunks = [
+            chunk
+            for chunk in eligible_chunks
+            if document_is_valid_for_date(
+                chunk,
+                requested_date,
+            )
+        ]
+
+        print(
+            "Eligible BM25 chunks:",
+            [
+                (
+                    chunk.metadata.get("chunk_id"),
+                    chunk.metadata.get("topic"),
+                )
+                for chunk in eligible_chunks
+            ],
+        )
+
+        bm25_documents = []
+
+        if eligible_chunks:
+            bm25_retriever = (
+                BM25Retriever.from_documents(
+                    eligible_chunks
+                )
+            )
+            bm25_retriever.k = bm25_k
+            bm25_documents = (
+                bm25_retriever.invoke(question)
+            )
+
+        span.set_attribute(
+            "rag.bm25_result_count",
+            len(bm25_documents),
+        )
+
+        span.set_attribute(
+            "rag.bm25_chunk_ids",
+            ",".join(
+                document.metadata.get(
+                    "chunk_id",
+                    "unknown",
+                )
+                for document in bm25_documents
+            ),
+        )
+
+        # ---------------------------------
+        # Reciprocal Rank Fusion
+        # ---------------------------------
+
+        fused_results = reciprocal_rank_fusion(
+            result_lists=[
+                dense_documents,
+                bm25_documents,
+            ],
+            weights=[
+                DENSE_WEIGHT,
+                BM25_WEIGHT,
+            ],
+        )
+
+        # Defensive filter: never send a different
+        # topic to the answer-generating LLM.
+        if topic is not None:
+            fused_results = [
+                (document, score)
+                for document, score in fused_results
+                if document.metadata.get("topic") == topic
+            ]
+
+        final_results = fused_results[:final_k]
+
+        span.set_attribute(
+            "rag.final_result_count",
+            len(final_results),
+        )
+
+        span.set_attribute(
+            "rag.result_document_ids",
+            ",".join(
+                document.metadata.get(
+                    "document_id",
+                    "unknown",
+                )
+                for document, score in final_results
+            ),
+        )
+
+        span.set_attribute(
+            "rag.result_chunk_ids",
+            ",".join(
+                document.metadata.get(
+                    "chunk_id",
+                    "unknown",
+                )
+                for document, score in final_results
+            ),
+        )
+
+        return final_results
 
 
 def has_primary_evidence(
@@ -422,12 +601,13 @@ def main() -> None:
 
         if not question:
             continue
-
+        routing = classify_and_route(question)
         results = hybrid_retrieve(
             question=question,
             chunks=chunks,
             vector_store=vector_store,
             final_k=5,
+            topic=routing.topic
         )
 
         if not results:
