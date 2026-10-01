@@ -1,0 +1,36 @@
+1. {
+  "question": "What was the baggage allowance policy for Econoly flex in November 2025?",
+  "expected_answer": "One checked bag up to 20 kg and one cabin bag up to 7 kg.",
+  "expected_documents": [
+    "POL-BAG-2025"
+  ],
+  "expected_chunks": [
+    "POL-BAG-2025-page-1-chunk-3",
+    "POL-BAG-2025-page-1-chunk-4"
+  ],
+  "expected_year": 2025,
+  "tests_typo_robustness": true
+}
+
+I got n November 2025, the Economy Flex class included one checked bag of up to 20 kg and one cabin bag weighing up to 7 kg.
+Sources: - POL-BAG-2025 | POL-BAG-2025.pdf | Page 1 | Chunk POL-BAG-2025-page-1-chunk-3 - POL-BAG-2025 | POL-BAG-2025.pdf | Page 1
+| Chunk POL-BAG-2025-page-1-chunk-4
+
+2. QUESTION:
+What is the cost of meals in economy from DXB to London?
+
+RETRIEVED CONTEXT:
+CHUNK ID: CAT-CABIN-MENU-2026-page-2-chunk-1
+DOCUMENT ID: CAT-CABIN-MENU-2026
+SOURCE: CAT-CABIN-MENU-2026.pdf
+PAGE: 2
+AUTHORITY: primary
+STATUS: active
+VALID FROM: 2026-01-01
+VALID TO: 2026-12-31
+"answer": "The cost of meals in Economy from Dubai (DXB) to London (LHR) is AED 42 for a warm meal
+(Saffron chicken rice with roasted vegetables), AED 38 for a vegetarian meal (Chickpea and vegetable pilaf), and AED 24 for a light bite
+(Cheese and tomato wrap).",
+  "citation_chunk_ids": [
+    "CAT-CABIN-MENU-2026-page-2-chunk-1"
+  ],

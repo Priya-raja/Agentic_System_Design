@@ -1,0 +1,15 @@
+{
+  "total_cases": 1,
+  "answerable_cases": 1,
+  "abstention_cases": 0,
+  "context_precision": 0.8333,
+  "context_recall": 1.0,
+  "faithfulness": 1.0,
+  "factual_correctness": 1.0,
+  "expected_document_recall": 1.0,
+  "abstention_accuracy": 1.0,
+  "average_total_latency_ms": 20372.34,
+  "cases_with_citation_errors": 0,
+  "cases_with_measurement_errors": 0,
+  "cases_with_metric_errors": 0
+}

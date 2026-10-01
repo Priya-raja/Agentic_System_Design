@@ -3,7 +3,8 @@ langgraph
 langchain
 langchain-core
 langchain-openai
-langchain-community
+ragas==0.4.3
+langchain-community==0.4.1
 langchain-huggingface
 langchain-text-splitters
 langchain-qdrant
