@@ -51,18 +51,18 @@ from ragas.metrics.collections import (
 # AeroNova imports
 # ---------------------------------------------------------
 
-from answer import (
+from agent.factory import (
     GroundedAnswer,
     generate_answer,
-    select_answer_model,
     validate_citations,
     validate_measurements,
 )
-from config import ANSWER_PROMPT_VERSION, FINAL_TOP_K
-from jev_classifier import classify_and_route
-from prepare_documents import prepare_public_chunks
-from prompt_manager import load_answer_prompt
-from retrieve import (
+from config import ANSWER_MODEL, ANSWER_PROMPT_VERSION, FINAL_TOP_K
+from agent.jev_classifier import classify_and_route, routing_handoff_message
+from safety.policy import filter_safe_context, SafetyViolation
+from context.ingest.prepare_documents import prepare_public_chunks
+from agent.prompt_manager import load_answer_prompt
+from context.indexers.retrieve import (
     create_vector_store,
     ensure_index_is_fresh,
     has_primary_evidence,
@@ -292,18 +292,22 @@ def evaluate_case(
     started_at = time.perf_counter()
     question = case["user_input"]
 
-    routing = classify_and_route(question)
-    model_name = select_answer_model(routing)
+    decision = classify_and_route(question)
+    model_name = ANSWER_MODEL
 
     retrieval_started_at = time.perf_counter()
 
-    results = hybrid_retrieve(
-        question=question,
-        chunks=chunks,
-        vector_store=vector_store,
-        final_k=FINAL_TOP_K,
-        topic=routing.topic,
-    )
+    results = []
+    if decision.rag_allowed:
+        results = hybrid_retrieve(
+            question=question,
+            chunks=chunks,
+            vector_store=vector_store,
+            final_k=FINAL_TOP_K,
+            department=decision.department,
+        )
+
+    results = filter_safe_context(results)
 
     retrieval_latency_ms = round(
         (time.perf_counter() - retrieval_started_at) * 1000,
@@ -318,7 +322,9 @@ def evaluate_case(
 
     generation_started_at = time.perf_counter()
 
-    if not results:
+    if not decision.rag_allowed:
+        response = create_abstention(routing_handoff_message(decision))
+    elif not results:
         response = create_abstention(
             "No applicable documents were retrieved."
         )
@@ -329,12 +335,15 @@ def evaluate_case(
         )
 
     else:
-        response = generate_answer(
-            question=question,
-            results=results,
-            prompt=prompt,
-            model_name=model_name,
-        )
+        try:
+            response = generate_answer(
+                question=question,
+                results=results,
+                prompt=prompt,
+                model_name=model_name,
+            )
+        except SafetyViolation as error:
+            response = create_abstention(str(error))
 
     generation_latency_ms = round(
         (time.perf_counter() - generation_started_at) * 1000,
@@ -401,10 +410,10 @@ def evaluate_case(
         "expected_document_recall": expected_document_recall,
         "actual_abstention": actual_abstention,
         "abstention_correct": abstention_correct,
-        "jev_topic": routing.topic,
-        "jev_topic_confidence": routing.topic_confidence,
-        "jev_model_tier": routing.model_tier,
-        "jev_model_confidence": routing.model_confidence,
+        "department": decision.department,
+        "request_scope": decision.request_scope,
+        "needs_authentication": decision.needs_authentication,
+        "needs_human_review": decision.needs_human_review,
         "answer_model": model_name,
         "citation_errors": citation_errors,
         "measurement_errors": measurement_errors,

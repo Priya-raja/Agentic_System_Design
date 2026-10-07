@@ -45,6 +45,30 @@ JEV_MODEL = "jev-1.13-free"
 
 JEV_TOPIC_MIN_CONFIDENCE = 0.65
 JEV_ROUTE_MIN_CONFIDENCE = 0.70
+# Scope confidence is independent of answer-model complexity confidence.
+JEV_SCOPE_MIN_CONFIDENCE = 0.65
 JEV_TIMEOUT_SECONDS = 15
 
 CHEAP_ANSWER_MODEL = "gpt-4.1-nano"
+
+# Redis
+REDIS_URL = "redis://127.0.0.1:6379/0"
+
+# Keep an answer for 24 hours.
+ANSWER_CACHE_TTL_SECONDS = 24 * 60 * 60
+
+# Briefly cache exact questions with no matching policy context.
+NO_CONTEXT_CACHE_TTL_SECONDS = 300
+
+# Increment when routing, validation or generation logic changes.
+ANSWER_PIPELINE_VERSION = "v9"
+
+# Conservative semantic reuse within matching policy and prompt scopes.
+SEMANTIC_CACHE_THRESHOLD = 0.97
+SEMANTIC_CACHE_MAX_ENTRIES = 100
+
+# Public RAG departments supported by the current corpus.
+ACTIVE_RAG_DEPARTMENTS = {
+    "baggage", "disruptions", "refunds_claims", "cabin_onboard", "general_policies", "upgrades",
+}
+INDEX_SCHEMA_VERSION = "departments-v2"

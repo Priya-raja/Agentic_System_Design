@@ -19,3 +19,5 @@ openinference-instrumentation-langchain
 openinference-instrumentation-openai
 # Phoenix 0.17.1 expects exporter._headers, which OpenTelemetry 1.45 removed.
 opentelemetry-exporter-otlp<1.45
+
+redis
