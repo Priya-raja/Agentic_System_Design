@@ -66,7 +66,9 @@ def test_public_mode_hides_records_and_rate_limit_is_enforced():
     try:
         assert c.get("/api/overview").json()["bookings"] == []
         assert c.get("/api/bookings/AN0001K/pdf").status_code == 403
-        statuses = [c.get("/api/health").status_code for _ in range(12)]
+        health_statuses = [c.get("/api/health").status_code for _ in range(12)]
+        assert health_statuses == [200] * 12
+        statuses = [c.get("/api/overview").status_code for _ in range(12)]
         assert 429 in statuses
     finally:
         tmp.cleanup()

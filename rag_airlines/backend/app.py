@@ -127,6 +127,7 @@ def create_app(*, demo_customer=None, ledger=None, session=None, rate_limit="10/
         return response
 
     @app.get("/api/health")
+    @limiter.exempt
     def health():
         return {"status": "ok", "demo": refunds is not None}
 
