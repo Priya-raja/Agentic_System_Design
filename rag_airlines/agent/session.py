@@ -141,7 +141,18 @@ class ChatSession:
             state = graph.invoke({"question": question}, config={"recursion_limit": 16})
             return state["result"]
         except Exception as error:
-            log.warning("request_failed", extra={"details": {"type": type(error).__name__}})
+            # Keep the customer-facing response generic, but retain a
+            # sanitized diagnostic in Render logs so service/index failures
+            # can be distinguished without exposing credentials or PII.
+            log.warning(
+                "request_failed",
+                extra={
+                    "details": {
+                        "type": type(error).__name__,
+                        "reason": sanitize_for_log(str(error))[:500],
+                    }
+                },
+            )
             event("error", message="A required service is unavailable.")
             return respond(
                 "A required service is unavailable. Please retry or check the local service configuration.",
