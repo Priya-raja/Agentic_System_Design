@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="250" viewBox="0 0 1100 250" role="img" aria-label="Safety, deterministic intent route, cache, hybrid retrieval, evidence check, answer synthesis, final verification, publish">
+  <rect width="1100" height="250" rx="16" fill="#f5f7ee"/>
+  <g font-family="Arial,sans-serif" fill="#365440" text-anchor="middle">
+    <text x="550" y="36" font-size="19">AeroNova · Classic RAG, verified</text>
+    <g fill="#e3ecd8" stroke="#cbd9bd">
+      <rect x="12" y="74" width="122" height="82" rx="8"/><rect x="148" y="74" width="122" height="82" rx="8"/>
+      <rect x="284" y="74" width="122" height="82" rx="8"/><rect x="420" y="74" width="122" height="82" rx="8"/>
+      <rect x="556" y="74" width="122" height="82" rx="8"/><rect x="692" y="74" width="122" height="82" rx="8"/>
+      <rect x="828" y="74" width="122" height="82" rx="8"/><rect x="964" y="74" width="122" height="82" rx="8"/>
+    </g>
+    <g font-size="11">
+      <text x="73" y="107">Safety</text><text x="209" y="107">Intent route</text><text x="345" y="107">Cache</text><text x="481" y="107">Hybrid retrieval</text>
+      <text x="617" y="107">Evidence check</text><text x="753" y="107">Synthesize</text><text x="889" y="107">Final verify</text><text x="1025" y="107">Publish</text>
+    </g>
+    <g font-size="9" fill="#819971">
+      <text x="73" y="132">Local rules</text><text x="209" y="132">No classifier call</text><text x="345" y="132">Exact + semantic</text><text x="481" y="132">One department</text>
+      <text x="617" y="132">Grounding gate</text><text x="753" y="132">One model call</text><text x="889" y="132">Citations + safety</text><text x="1025" y="132">Verified only</text>
+    </g>
+    <g font-size="18"><text x="141" y="119">→</text><text x="277" y="119">→</text><text x="413" y="119">→</text><text x="549" y="119">→</text><text x="685" y="119">→</text><text x="821" y="119">→</text><text x="957" y="119">→</text></g>
+    <text x="550" y="207" font-size="11">Private customer workflows remain separate · Refund simulation requires human approval</text>
+  </g>
+</svg>

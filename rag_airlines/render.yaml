@@ -1,0 +1,25 @@
+# Render Blueprint for the AeroNova API. The frontend is hosted on Vercel;
+# configure a hosted Qdrant collection before using policy/chat endpoints.
+services:
+  - type: web
+    name: aeronova-api
+    runtime: docker
+    rootDir: rag_airlines
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: PUBLIC_ORIGIN
+        value: https://aeronova-eight.vercel.app
+      - key: ALLOWED_HOSTS
+        value: aeronova-api.onrender.com,localhost,127.0.0.1
+      - key: PHOENIX_ENABLED
+        value: "false"
+      - key: AERONOVA_ENABLE_OTEL
+        value: "0"

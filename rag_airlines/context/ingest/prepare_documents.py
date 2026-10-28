@@ -1,9 +1,12 @@
+from observability.logging import log_message
 import re
 from datetime import date
+from pathlib import Path
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from context.ingest.load_documents import load_all_documents
+from context.routes import extract_route
 
 
 PUBLIC_FOLDERS = {
@@ -32,6 +35,10 @@ def extract_document_year(
     content: str,
 ) -> int | None:
     """Extract a policy year from the filename or document header."""
+
+    # A regulation number's year is not an annual policy-version year.
+    if Path(source_file).stem == "POL-EU261-2004":
+        return None
 
     filename_match = re.search(
         r"\b(20\d{2})\b",
@@ -181,10 +188,7 @@ def select_public_documents(
 
         # For now, only index the policy notice image.
         # The seat and meal pictures will enter the image index later.
-        if (
-            source_type == "image"
-            and source_file not in ALLOWED_IMAGE_FILES
-        ):
+        if source_type == "image" and source_file not in ALLOWED_IMAGE_FILES:
             continue
 
         content = document.page_content.strip()
@@ -238,6 +242,7 @@ def select_public_documents(
 
     return selected_documents
 
+
 # extract topics for metadata filtering
 def determine_chunk_topic(content: str) -> str:
     text = content.lower()
@@ -286,6 +291,11 @@ UPGRADE_DOCUMENT_IDS = {"POL-UPG-2026", "TAB-UPG-ELIGIBILITY-2026", "WEB-007"}
 
 
 def infer_document_topic(document: Document) -> str:
+    if (
+        document.metadata.get("document_id", "").startswith(("POL-REWARDS-", "POL-REDEEM-"))
+        or document.metadata.get("document_id") == "WEB-008"
+    ):
+        return "rewards_loyalty"
     if document.metadata.get("document_id", "") in UPGRADE_DOCUMENT_IDS:
         return "upgrades"
     return determine_chunk_topic(document.page_content)
@@ -298,14 +308,22 @@ def determine_chunk_department(document: Document) -> str:
     related = re.search(r"^related_policy:\s*(\S+)", document.page_content, re.M)
     if related:
         source = related.group(1)
+    if source.startswith(("POL-REWARDS-", "POL-REDEEM-")) or source == "WEB-008":
+        return "rewards_loyalty"
+    if source == "POL-EU261-2004":
+        return "disruptions"
     if source in UPGRADE_DOCUMENT_IDS or source.startswith(("POL-UPG-", "TAB-UPG-")):
         return "upgrades"
     if source.startswith("POL-CLAIM-") or source == "WEB-003":
         return "refunds_claims"
     if source.startswith("POL-DIS-") or source == "WEB-005":
         return "disruptions"
-    if (source.startswith(("POL-BAG-", "TAB-BAG-", "IMG-BAG-"))
-            or source in {"WEB-001", "WEB-002", "WEB-004", "WEB-006"}):
+    if source.startswith(("POL-BAG-", "TAB-BAG-", "IMG-BAG-")) or source in {
+        "WEB-001",
+        "WEB-002",
+        "WEB-004",
+        "WEB-006",
+    }:
         return "baggage"
     if source.startswith("CAT-CABIN-"):
         return "cabin_onboard"
@@ -328,10 +346,23 @@ def split_documents(
     )
 
     # Attach department before splitting to preserve front-matter/source routing.
-    routed_documents = [Document(page_content=document.page_content, metadata={
-        **document.metadata, "department": determine_chunk_department(document),
-        "topic": infer_document_topic(document),
-    }) for document in documents]
+    routed_documents = [
+        Document(
+            page_content=document.page_content,
+            metadata={
+                **document.metadata,
+                "department": determine_chunk_department(document),
+                "topic": infer_document_topic(document),
+                **(
+                    {"route": extract_route(document.page_content)}
+                    if document.metadata.get("document_id", "").startswith("CAT-CABIN-")
+                    and extract_route(document.page_content)
+                    else {}
+                ),
+            },
+        )
+        for document in documents
+    ]
     chunks = text_splitter.split_documents(routed_documents)
 
     for position, chunk in enumerate(chunks):
@@ -341,10 +372,8 @@ def split_documents(
         )
         page = chunk.metadata.get("page", 1)
 
-        chunk.metadata["chunk_id"] = (
-            f"{document_id}-page-{page}-chunk-{position}"
-        )
-        if chunk.metadata["department"] != "upgrades":
+        chunk.metadata["chunk_id"] = f"{document_id}-page-{page}-chunk-{position}"
+        if chunk.metadata["department"] not in {"upgrades", "rewards_loyalty"}:
             chunk.metadata["topic"] = determine_chunk_topic(chunk.page_content)
 
     return chunks
@@ -353,30 +382,29 @@ def split_documents(
 def prepare_public_chunks() -> list[Document]:
     all_documents = load_all_documents()
 
-    public_documents = select_public_documents(
-        all_documents
-    )
+    public_documents = select_public_documents(all_documents)
 
-    chunks = split_documents(
-        public_documents
-    )
+    chunks = split_documents(public_documents)
 
     return chunks
 
 
 def main() -> None:
+    from observability.logging import configure_logging
+
+    configure_logging()
     chunks = prepare_public_chunks()
 
-    print("\n" + "=" * 60)
-    print(f"Created chunks: {len(chunks)}")
+    log_message("\n" + "=" * 60)
+    log_message(f"Created chunks: {len(chunks)}")
 
     for chunk in chunks[:5]:
-        print("\n" + "=" * 60)
-        print("Metadata:")
-        print(chunk.metadata)
+        log_message("\n" + "=" * 60)
+        log_message("Metadata:")
+        log_message(chunk.metadata)
 
-        print("\nContent:")
-        print(chunk.page_content)
+        log_message("\nContent:")
+        log_message(chunk.page_content)
 
 
 if __name__ == "__main__":

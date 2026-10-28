@@ -29,10 +29,6 @@ if str(PROJECT_ROOT) not in sys.path:
 # Must run before importing ragas.
 # ---------------------------------------------------------
 
-from evals.ragas_compat import apply_ragas_compatibility
-
-apply_ragas_compatibility()
-
 
 # ---------------------------------------------------------
 # RAGAS imports: current Collections API
@@ -53,20 +49,15 @@ from ragas.metrics.collections import (
 
 from agent.factory import (
     GroundedAnswer,
-    generate_answer,
     validate_citations,
     validate_measurements,
 )
-from config import ANSWER_MODEL, ANSWER_PROMPT_VERSION, FINAL_TOP_K
-from agent.jev_classifier import classify_and_route, routing_handoff_message
-from safety.policy import filter_safe_context, SafetyViolation
+from config import ANSWER_MODEL, ANSWER_PROMPT_VERSION
 from context.ingest.prepare_documents import prepare_public_chunks
 from agent.prompt_manager import load_answer_prompt
 from context.indexers.retrieve import (
     create_vector_store,
     ensure_index_is_fresh,
-    has_primary_evidence,
-    hybrid_retrieve,
 )
 
 
@@ -85,10 +76,7 @@ def load_golden_dataset(path: Path) -> list[dict[str, Any]]:
     position = 0
 
     while position < len(content):
-        while (
-            position < len(content)
-            and content[position].isspace()
-        ):
+        while position < len(content) and content[position].isspace():
             position += 1
 
         if position >= len(content):
@@ -101,18 +89,13 @@ def load_golden_dataset(path: Path) -> list[dict[str, Any]]:
             )
         except json.JSONDecodeError as error:
             raise ValueError(
-                "Invalid JSON at "
-                f"line {error.lineno}, column {error.colno}: "
-                f"{error.msg}"
+                f"Invalid JSON at line {error.lineno}, column {error.colno}: {error.msg}"
             ) from error
 
         if not isinstance(case, dict):
-            line_number = (
-                content.count("\n", 0, position) + 1
-            )
+            line_number = content.count("\n", 0, position) + 1
             raise ValueError(
-                "Each golden dataset record must be a JSON "
-                f"object (record ending on line {line_number})."
+                f"Each golden dataset record must be a JSON object (record ending on line {line_number})."
             )
 
         cases.append(case)
@@ -125,10 +108,7 @@ def create_abstention(reason: str) -> GroundedAnswer:
 
     return GroundedAnswer(
         answerable=False,
-        answer=(
-            "I cannot confirm an answer from the available "
-            "applicable documents."
-        ),
+        answer=("I cannot confirm an answer from the available applicable documents."),
         citation_chunk_ids=[],
         refusal_reason=reason,
     )
@@ -146,13 +126,9 @@ def extract_retrieval_data(
     for document, score in results:
         retrieved_contexts.append(document.page_content)
 
-        retrieved_chunk_ids.append(
-            document.metadata.get("chunk_id", "unknown")
-        )
+        retrieved_chunk_ids.append(document.metadata.get("chunk_id", "unknown"))
 
-        retrieved_document_ids.append(
-            document.metadata.get("document_id", "unknown")
-        )
+        retrieved_document_ids.append(document.metadata.get("document_id", "unknown"))
 
     return (
         retrieved_contexts,
@@ -292,63 +268,60 @@ def evaluate_case(
     started_at = time.perf_counter()
     question = case["user_input"]
 
-    decision = classify_and_route(question)
-    model_name = ANSWER_MODEL
-
-    retrieval_started_at = time.perf_counter()
+    # Evaluate the same bounded session used by CLI and API, with caches disabled.
+    from types import SimpleNamespace
+    from langchain_core.documents import Document
+    from agent.session import ChatSession
+    from agent.tools import ToolRegistry, RetrievePolicyTool
+    import threading
 
     results = []
-    if decision.rag_allowed:
-        results = hybrid_retrieve(
-            question=question,
-            chunks=chunks,
-            vector_store=vector_store,
-            final_k=FINAL_TOP_K,
-            department=decision.department,
-        )
+    lock = threading.Lock()
+    tool = RetrievePolicyTool(chunks, vector_store)
+    original = tool.handler
 
-    results = filter_safe_context(results)
-
-    retrieval_latency_ms = round(
-        (time.perf_counter() - retrieval_started_at) * 1000,
-        2,
-    )
-
-    (
-        retrieved_contexts,
-        retrieved_chunk_ids,
-        retrieved_document_ids,
-    ) = extract_retrieval_data(results)
-
-    generation_started_at = time.perf_counter()
-
-    if not decision.rag_allowed:
-        response = create_abstention(routing_handoff_message(decision))
-    elif not results:
-        response = create_abstention(
-            "No applicable documents were retrieved."
-        )
-
-    elif not has_primary_evidence(results):
-        response = create_abstention(
-            "No applicable primary source supports the answer."
-        )
-
-    else:
-        try:
-            response = generate_answer(
-                question=question,
-                results=results,
-                prompt=prompt,
-                model_name=model_name,
+    def capture(**kwargs):
+        output = original(**kwargs)
+        with lock:
+            results.extend(
+                (Document(page_content=item["content"], metadata=item["metadata"]), item["score"])
+                for item in output["chunks"]
             )
-        except SafetyViolation as error:
-            response = create_abstention(str(error))
+        return output
 
-    generation_latency_ms = round(
-        (time.perf_counter() - generation_started_at) * 1000,
-        2,
+    tool.handler = capture
+
+    class DisabledSemantic:
+        def lookup(self, **kwargs):
+            return None
+
+        def store(self, **kwargs):
+            return None
+
+    session = ChatSession(
+        agent=SimpleNamespace(prompt=prompt, chunks=chunks, vector_store=vector_store),
+        registry=ToolRegistry().register(tool),
+        semantic_cache=DisabledSemantic(),
+        cache_get=lambda _: None,
+        cache_set=lambda *args, **kwargs: None,
     )
+    output = session.ask(question)
+    model_name = ANSWER_MODEL
+    response = GroundedAnswer(
+        answerable=output["answerable"],
+        answer=output["answer"],
+        citation_chunk_ids=[source["chunk_id"] for source in output["sources"]],
+        refusal_reason=output["refusal_reason"],
+    )
+    retrieved_contexts, retrieved_chunk_ids, retrieved_document_ids = extract_retrieval_data(results)
+    events = output["trace"]
+    tools = [event["ms"] for event in events if event["event"] in {"tool_start", "tool_end"}]
+    retrieval_latency_ms = round(max(tools) - min(tools), 2) if tools else 0
+    synth = [event["ms"] for event in events if event["event"] == "synth_start"]
+    verify = [
+        event["ms"] for event in events if event["event"] == "verify" and event.get("stage") == "synthesis"
+    ]
+    generation_latency_ms = round(verify[0] - synth[0], 2) if synth and verify else 0
 
     citation_errors = validate_citations(response, results)
 
@@ -363,15 +336,11 @@ def evaluate_case(
     actual_abstention = not response.answerable
     expected_abstention = case["should_abstain"]
 
-    abstention_correct = (
-        actual_abstention == expected_abstention
-    )
+    abstention_correct = actual_abstention == expected_abstention
 
-    expected_document_recall = (
-        calculate_expected_document_recall(
-            expected_document_ids=case["expected_document_ids"],
-            retrieved_document_ids=retrieved_document_ids,
-        )
+    expected_document_recall = calculate_expected_document_recall(
+        expected_document_ids=case["expected_document_ids"],
+        retrieved_document_ids=retrieved_document_ids,
     )
 
     # Correct abstentions are evaluated using the deterministic
@@ -410,10 +379,10 @@ def evaluate_case(
         "expected_document_recall": expected_document_recall,
         "actual_abstention": actual_abstention,
         "abstention_correct": abstention_correct,
-        "department": decision.department,
-        "request_scope": decision.request_scope,
-        "needs_authentication": decision.needs_authentication,
-        "needs_human_review": decision.needs_human_review,
+        "department": sorted({d.metadata.get("department", "unknown") for d, _ in results}),
+        "request_scope": "customer_specific" if output["kind"] == "secure" else "public_information",
+        "needs_authentication": output["kind"] == "secure",
+        "needs_human_review": output["kind"] in {"safety", "handoff", "clarify"},
         "answer_model": model_name,
         "citation_errors": citation_errors,
         "measurement_errors": measurement_errors,
@@ -421,7 +390,9 @@ def evaluate_case(
         "metrics": ragas_scores,
         "retrieval_latency_ms": retrieval_latency_ms,
         "generation_latency_ms": generation_latency_ms,
-        "total_latency_ms": total_latency_ms,
+        "total_latency_ms": output["latency_ms"],
+        "evaluation_latency_ms": total_latency_ms,
+        "pipeline": "bounded-agent-v1",
     }
 
 
@@ -432,9 +403,7 @@ def average_available(
     """Average non-null values for one RAGAS metric."""
 
     values = [
-        record["metrics"][metric_name]
-        for record in records
-        if record["metrics"][metric_name] is not None
+        record["metrics"][metric_name] for record in records if record["metrics"][metric_name] is not None
     ]
 
     if not values:
@@ -454,21 +423,12 @@ def build_summary(
         if record["expected_document_recall"] is not None
     ]
 
-    abstention_values = [
-        1.0 if record["abstention_correct"] else 0.0
-        for record in records
-    ]
+    abstention_values = [1.0 if record["abstention_correct"] else 0.0 for record in records]
 
     return {
         "total_cases": len(records),
-        "answerable_cases": sum(
-            not record["should_abstain"]
-            for record in records
-        ),
-        "abstention_cases": sum(
-            record["should_abstain"]
-            for record in records
-        ),
+        "answerable_cases": sum(not record["should_abstain"] for record in records),
+        "abstention_cases": sum(record["should_abstain"] for record in records),
         "context_precision": average_available(
             records,
             "context_precision",
@@ -486,34 +446,16 @@ def build_summary(
             "factual_correctness",
         ),
         "expected_document_recall": (
-            round(mean(document_recall_values), 4)
-            if document_recall_values
-            else None
+            round(mean(document_recall_values), 4) if document_recall_values else None
         ),
-        "abstention_accuracy": (
-            round(mean(abstention_values), 4)
-            if abstention_values
-            else None
-        ),
+        "abstention_accuracy": (round(mean(abstention_values), 4) if abstention_values else None),
         "average_total_latency_ms": round(
-            mean(
-                record["total_latency_ms"]
-                for record in records
-            ),
+            mean(record["total_latency_ms"] for record in records),
             2,
         ),
-        "cases_with_citation_errors": sum(
-            bool(record["citation_errors"])
-            for record in records
-        ),
-        "cases_with_measurement_errors": sum(
-            bool(record["measurement_errors"])
-            for record in records
-        ),
-        "cases_with_metric_errors": sum(
-            bool(record["metric_errors"])
-            for record in records
-        ),
+        "cases_with_citation_errors": sum(bool(record["citation_errors"]) for record in records),
+        "cases_with_measurement_errors": sum(bool(record["measurement_errors"]) for record in records),
+        "cases_with_metric_errors": sum(bool(record["metric_errors"]) for record in records),
     }
 
 
@@ -556,25 +498,15 @@ def main() -> None:
     load_dotenv()
 
     if not os.getenv("OPENAI_API_KEY"):
-        raise ValueError(
-            "OPENAI_API_KEY is missing from .env"
-        )
+        raise ValueError("OPENAI_API_KEY is missing from .env")
 
-    golden_cases = load_golden_dataset(
-        GOLDEN_DATASET_FILE
-    )
+    golden_cases = load_golden_dataset(GOLDEN_DATASET_FILE)
 
     if args.case_id:
-        golden_cases = [
-            case
-            for case in golden_cases
-            if case["case_id"] == args.case_id
-        ]
+        golden_cases = [case for case in golden_cases if case["case_id"] == args.case_id]
 
         if not golden_cases:
-            raise ValueError(
-                f"Unknown case ID: {args.case_id}"
-            )
+            raise ValueError(f"Unknown case ID: {args.case_id}")
 
     elif args.limit is not None:
         golden_cases = golden_cases[: args.limit]
@@ -586,12 +518,10 @@ def main() -> None:
     ensure_index_is_fresh(chunks)
     vector_store = create_vector_store()
 
-    prompt = load_answer_prompt(
-        version=ANSWER_PROMPT_VERSION
-    )
+    prompt = load_answer_prompt(version=ANSWER_PROMPT_VERSION)
 
     # Build evaluator resources only once.
-    evaluator_client = AsyncOpenAI()
+    evaluator_client = AsyncOpenAI(timeout=45, max_retries=1)
 
     evaluator_llm = llm_factory(
         EVALUATOR_MODEL,
@@ -599,15 +529,9 @@ def main() -> None:
     )
 
     scorers = {
-        "context_precision": ContextPrecision(
-            llm=evaluator_llm
-        ),
-        "context_recall": ContextRecall(
-            llm=evaluator_llm
-        ),
-        "faithfulness": Faithfulness(
-            llm=evaluator_llm
-        ),
+        "context_precision": ContextPrecision(llm=evaluator_llm),
+        "context_recall": ContextRecall(llm=evaluator_llm),
+        "faithfulness": Faithfulness(llm=evaluator_llm),
         "factual_correctness": FactualCorrectness(
             llm=evaluator_llm,
             mode="f1",
@@ -620,10 +544,7 @@ def main() -> None:
         golden_cases,
         start=1,
     ):
-        print(
-            f"\n[{position}/{len(golden_cases)}] "
-            f"{case['case_id']}"
-        )
+        print(f"\n[{position}/{len(golden_cases)}] {case['case_id']}")
         print(case["user_input"])
 
         try:
@@ -672,9 +593,7 @@ def main() -> None:
             records.append(
                 {
                     **case,
-                    "pipeline_error": (
-                        f"{type(error).__name__}: {error}"
-                    ),
+                    "pipeline_error": (f"{type(error).__name__}: {error}"),
                     "metrics": {
                         "context_precision": None,
                         "context_recall": None,
@@ -691,25 +610,19 @@ def main() -> None:
             )
 
     summary = build_summary(records)
+    summary["pipeline"] = "bounded-agent-v1"
+    summary["latency_definition"] = "agent_only"
 
     RESULTS_DIR.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-    timestamp = datetime.now(timezone.utc).strftime(
-        "%Y%m%dT%H%M%SZ"
-    )
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-    details_file = (
-        RESULTS_DIR
-        / f"ragas_run_{timestamp}.jsonl"
-    )
+    details_file = RESULTS_DIR / f"ragas_run_{timestamp}.jsonl"
 
-    summary_file = (
-        RESULTS_DIR
-        / f"ragas_summary_{timestamp}.json"
-    )
+    summary_file = RESULTS_DIR / f"ragas_summary_{timestamp}.json"
 
     save_jsonl(records, details_file)
 

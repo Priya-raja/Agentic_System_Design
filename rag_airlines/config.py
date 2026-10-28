@@ -1,13 +1,19 @@
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 
 ROOT_DIR = Path(__file__).parent.resolve()
+# Read local configuration before startup consumers inspect tracing or demo flags.
+# Explicit process environment always takes precedence.
+load_dotenv(ROOT_DIR / ".env", override=False)
 
 # Corpus
 CORPUS_ROOT = ROOT_DIR / "data"
 
 # Qdrant
-QDRANT_URL = "http://localhost:6333"
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY") or None
 QDRANT_COLLECTION = "aeronova_public_knowledge"
 
 # Embeddings
@@ -20,7 +26,7 @@ ANSWER_TEMPERATURE = 0
 
 # Prompt version
 ANSWER_PROMPT_ID = "aeronova-answer"
-ANSWER_PROMPT_VERSION = "v4"
+ANSWER_PROMPT_VERSION = "v6"
 PROMPT_ROOT = ROOT_DIR / "prompts"
 
 # Retrieval
@@ -33,26 +39,13 @@ BM25_WEIGHT = 0.4
 PRIMARY_AUTHORITY_BOOST = 0.002
 
 # Tracing
-PHOENIX_ENABLED = True
-PHOENIX_PROJECT_NAME = "aeronova-rag"
-PHOENIX_ENDPOINT = (
-    "http://localhost:6006/v1/traces"
-)
-
-# JEV
-JEV_API_URL = "https://opencode.ai/zen/v1/systemone"
-JEV_MODEL = "jev-1.13-free"
-
-JEV_TOPIC_MIN_CONFIDENCE = 0.65
-JEV_ROUTE_MIN_CONFIDENCE = 0.70
-# Scope confidence is independent of answer-model complexity confidence.
-JEV_SCOPE_MIN_CONFIDENCE = 0.65
-JEV_TIMEOUT_SECONDS = 15
-
-CHEAP_ANSWER_MODEL = "gpt-4.1-nano"
+PHOENIX_ENABLED = os.getenv("PHOENIX_ENABLED", "true").lower() in {"1", "true", "yes"}
+PHOENIX_PROJECT_NAME = os.getenv("PHOENIX_PROJECT_NAME", "aeronova-rag")
+PHOENIX_ENDPOINT = os.getenv("PHOENIX_ENDPOINT", "http://localhost:6006/v1/traces")
+PHOENIX_PUBLIC_URL = os.getenv("PHOENIX_PUBLIC_URL", "http://localhost:6006")
 
 # Redis
-REDIS_URL = "redis://127.0.0.1:6379/0"
+REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
 
 # Keep an answer for 24 hours.
 ANSWER_CACHE_TTL_SECONDS = 24 * 60 * 60
@@ -61,7 +54,7 @@ ANSWER_CACHE_TTL_SECONDS = 24 * 60 * 60
 NO_CONTEXT_CACHE_TTL_SECONDS = 300
 
 # Increment when routing, validation or generation logic changes.
-ANSWER_PIPELINE_VERSION = "v9"
+ANSWER_PIPELINE_VERSION = "classic-rag-v1-intent-routing"
 
 # Conservative semantic reuse within matching policy and prompt scopes.
 SEMANTIC_CACHE_THRESHOLD = 0.97
@@ -69,6 +62,15 @@ SEMANTIC_CACHE_MAX_ENTRIES = 100
 
 # Public RAG departments supported by the current corpus.
 ACTIVE_RAG_DEPARTMENTS = {
-    "baggage", "disruptions", "refunds_claims", "cabin_onboard", "general_policies", "upgrades",
+    "baggage",
+    "disruptions",
+    "refunds_claims",
+    "cabin_onboard",
+    "general_policies",
+    "upgrades",
+    "rewards_loyalty",
 }
-INDEX_SCHEMA_VERSION = "departments-v2"
+INDEX_SCHEMA_VERSION = "departments-v5-routes"
+
+# Policy authority requirements are explicit; secondary menu guides are acceptable.
+REQUIRE_PRIMARY = {department: department != "cabin_onboard" for department in ACTIVE_RAG_DEPARTMENTS}

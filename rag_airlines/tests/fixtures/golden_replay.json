@@ -1,0 +1,5 @@
+[
+ {"question":"What is the baggage allowance in 2026?","department":"baggage","documents":[{"id":"POL-BAG-2026","chunk":"BAG-1","content":"Economy Flex includes one checked bag up to 25 kg."}],"response":{"answerable":true,"answer":"Economy Flex includes one checked bag up to 25 kg.","citation_chunk_ids":["BAG-1"]},"expected_ids":["POL-BAG-2026"],"expected_kind":"answer"},
+ {"question":"Can I upgrade my Economy Flex ticket directly to Business?","department":"upgrades","documents":[{"id":"POL-UPG-2026","chunk":"UPG-1","content":"Economy Flex tickets cannot be upgraded directly to Business."}],"response":{"answerable":true,"answer":"No. Economy Flex tickets cannot be upgraded directly to Business.","citation_chunk_ids":["UPG-1"]},"expected_ids":["POL-UPG-2026"],"expected_kind":"answer"},
+ {"question":"Was Economy Flex eligible for an upgrade in 2025?","department":"upgrades","documents":[],"response":null,"expected_ids":[],"expected_kind":"no_context"}
+]

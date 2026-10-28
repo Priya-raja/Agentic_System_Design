@@ -1,8 +1,8 @@
 [
   {
     "path": "README.md",
-    "sha256": "ea5ce78e001188a6b5f471f0f7f2863f8f849bc3566e61f1a6574130327bc006",
-    "bytes": 2484
+    "sha256": "d81fd65ec4225a28105fd1aafddb2d074cfcfd00f12f905712de3df092c6cdda",
+    "bytes": 4251
   },
   {
     "path": "crm/baggage_cases.jsonl",
@@ -25,14 +25,34 @@
     "bytes": 647
   },
   {
+    "path": "crm/refund_claims.jsonl",
+    "sha256": "6c2c6d41945da5a96fad34384e675e252281f00ba43769c7bfeac01462fde96c",
+    "bytes": 787
+  },
+  {
+    "path": "crm/upgrade_offers.jsonl",
+    "sha256": "c385584a8a7f423f5e23558e9bda509d7f3b3f9d11863e1e74666d7b98736744",
+    "bytes": 2316
+  },
+  {
     "path": "evaluation/seed_questions.jsonl",
     "sha256": "c8159ba0c95c4af137f39e8f7572e9544eb7939d4e6dad52574c163b3c0d707c",
     "bytes": 5041
   },
   {
+    "path": "operations/flight_status.json",
+    "sha256": "7b23084c7929971e19991b77ccdb86bd39b2e3d7e3beffb4e85337eab5568fd8",
+    "bytes": 458
+  },
+  {
     "path": "policies/CAT-CABIN-MENU-2026.pdf",
     "sha256": "cebf17fd37e50321633efc2f740677e759c88c135ddb39b4d84fcb5d8cb1f76e",
     "bytes": 456618
+  },
+  {
+    "path": "policies/CAT-CABIN-ROUTES-2026.pdf",
+    "sha256": "81485d5bd8c209ef4851b4bb1648f58263b60e4b3cdfa35a5139a92b8e08c86b",
+    "bytes": 12232
   },
   {
     "path": "policies/IMG-BAG-UPDATE-2026.png",
@@ -60,6 +80,26 @@
     "bytes": 44588
   },
   {
+    "path": "policies/POL-EU261-2004.md",
+    "sha256": "b0f49ecf52aad19aa6218e2f47c2e7a741fd6b9793e594efafc384b079813b42",
+    "bytes": 28841
+  },
+  {
+    "path": "policies/POL-REDEEM-2026.md",
+    "sha256": "37b30f06dae192225c24ed86964dd18e75eb11434edc80d43fa6934638ebfa05",
+    "bytes": 2617
+  },
+  {
+    "path": "policies/POL-REWARDS-2026.md",
+    "sha256": "14536d4bcba393335533b6668382dd1cbe280732deac78c60827c222ff9c5fb0",
+    "bytes": 1953
+  },
+  {
+    "path": "policies/POL-UPG-2026.pdf",
+    "sha256": "74cc8540fb479db8bee2a3f17a85c555830cf15ef0fd676bfa79010a7f68934f",
+    "bytes": 5264
+  },
+  {
     "path": "policies/TAB-BAG-ALLOWANCE-2026.csv",
     "sha256": "3e67ab33e986ca86cc739a11e43bcd1ee1f16f7ef2ba21007c839c474ec12908",
     "bytes": 349
@@ -68,6 +108,11 @@
     "path": "policies/TAB-BAG-ALLOWANCE-2026.pdf",
     "sha256": "a45dc4a0dcc0879814a7f259bfe7e28a1ee7a9a6a5234dadca23fe47f6e65a1f",
     "bytes": 44400
+  },
+  {
+    "path": "policies/TAB-UPG-ELIGIBILITY-2026.pdf",
+    "sha256": "f5bd8ad32e2a31a3866193264caa894b382d8b005135a9ae0a73ce9709934aea",
+    "bytes": 3433
   },
   {
     "path": "policies/business.jpg",
@@ -138,5 +183,15 @@
     "path": "web/WEB-006.md",
     "sha256": "4d49511409aa4f51f9dc5e02dddb36b9c4a4afe7fde86efce12cd3c56925d1a8",
     "bytes": 391
+  },
+  {
+    "path": "web/WEB-007.md",
+    "sha256": "4538ba8ca5082d10908f55a3dbe30d46879013d157bf15dc1684533148f5b53e",
+    "bytes": 1159
+  },
+  {
+    "path": "web/WEB-008.md",
+    "sha256": "d264fd36b207cc1ab3654a0296775ca3f30eb835f4a3b81fa62fe1c7021917ce",
+    "bytes": 1124
   }
 ]

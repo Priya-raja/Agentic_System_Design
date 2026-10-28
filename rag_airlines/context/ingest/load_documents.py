@@ -1,3 +1,4 @@
+from observability.logging import log_message
 from pathlib import Path
 from config import CORPUS_ROOT
 import json
@@ -21,9 +22,7 @@ PDF_METADATA_TO_REMOVE = {
 def file_freshness_metadata(file_path: Path) -> dict:
     """Return stable metadata used to detect changed source files."""
 
-    content_hash = hashlib.sha256(
-        file_path.read_bytes()
-    ).hexdigest()
+    content_hash = hashlib.sha256(file_path.read_bytes()).hexdigest()
 
     return {
         "content_hash": content_hash,
@@ -37,7 +36,6 @@ def load_pdf(file_path: Path) -> list[Document]:
     freshness = file_freshness_metadata(file_path)
 
     for document in documents:
-
         for key in PDF_METADATA_TO_REMOVE:
             document.metadata.pop(
                 key,
@@ -64,6 +62,7 @@ def load_pdf(file_path: Path) -> list[Document]:
 
     return documents
 
+
 def load_image(file_path: Path) -> list[Document]:
     image = Image.open(file_path)
     freshness = file_freshness_metadata(file_path)
@@ -87,6 +86,8 @@ def load_image(file_path: Path) -> list[Document]:
             },
         )
     ]
+
+
 def load_markdown(file_path: Path) -> list[Document]:
     content = file_path.read_text(encoding="utf-8")
     freshness = file_freshness_metadata(file_path)
@@ -103,6 +104,8 @@ def load_markdown(file_path: Path) -> list[Document]:
             },
         )
     ]
+
+
 def load_json(file_path: Path) -> list[Document]:
     content = file_path.read_text(encoding="utf-8")
     freshness = file_freshness_metadata(file_path)
@@ -119,6 +122,8 @@ def load_json(file_path: Path) -> list[Document]:
             },
         )
     ]
+
+
 def load_jsonl(file_path: Path) -> list[Document]:
     documents = []
     freshness = file_freshness_metadata(file_path)
@@ -171,7 +176,7 @@ def load_all_documents() -> list[Document]:
 
         suffix = file_path.suffix.lower()
 
-        print(f"Reading: {file_path}")
+        log_message(f"Reading: {file_path}")
 
         try:
             if suffix == ".pdf":
@@ -190,25 +195,23 @@ def load_all_documents() -> list[Document]:
                 documents.extend(load_jsonl(file_path))
 
         except Exception as error:
-            print(f"Could not read {file_path}: {error}")
+            log_message(f"Could not read {file_path}: {error}")
 
     return documents
 
 
 if __name__ == "__main__":
     if not CORPUS_ROOT.exists():
-        raise FileNotFoundError(
-            f"Corpus folder does not exist: {CORPUS_ROOT}"
-        )
+        raise FileNotFoundError(f"Corpus folder does not exist: {CORPUS_ROOT}")
 
     loaded_documents = load_all_documents()
 
-    print("\n" + "=" * 60)
-    print(f"Total LangChain documents: {len(loaded_documents)}")
+    log_message("\n" + "=" * 60)
+    log_message(f"Total LangChain documents: {len(loaded_documents)}")
 
     for document in loaded_documents[:5]:
-        print("\nMetadata:")
-        print(document.metadata)
+        log_message("\nMetadata:")
+        log_message(document.metadata)
 
-        print("\nContent preview:")
-        print(document.page_content[:300])
+        log_message("\nContent preview:")
+        log_message(document.page_content[:300])

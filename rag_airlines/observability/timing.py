@@ -1,5 +1,6 @@
-"""Lightweight console timings for diagnosing request latency."""
+"""Correlated structured step timings."""
 
+import logging
 from contextlib import contextmanager
 from time import perf_counter
 
@@ -10,4 +11,6 @@ def measure_step(label: str):
     try:
         yield
     finally:
-        print(f"Timing | {label}: {(perf_counter() - started) * 1000:.0f} ms")
+        logging.getLogger("aeronova.timing").info(
+            "step_completed", extra={"step": label, "ms": round((perf_counter() - started) * 1000, 2)}
+        )

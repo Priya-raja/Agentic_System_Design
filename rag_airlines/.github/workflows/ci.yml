@@ -1,0 +1,64 @@
+name: Agent checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13', cache: pip}
+      - run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      - run: pip install -c requirements.lock -e '.[dev,eval]'
+      - run: pip check
+      - run: ruff check .
+      - run: mypy agent
+      - run: pytest -q
+      - run: python -c "from ragas.metrics.collections import ContextPrecision, ContextRecall, Faithfulness, FactualCorrectness"
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: npm, cache-dependency-path: web/package-lock.json}
+      - run: npm ci
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+      - run: npm run typecheck
+        working-directory: web
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: pip install -c requirements.lock -e '.[dev]'
+      - run: npm ci && npm run build && npx playwright install --with-deps chromium
+        working-directory: web
+      - name: Start API and web
+        run: |
+          AERONOVA_DEMO_CUSTOMER=CUST-1001 API_RATE_LIMIT=1000/minute uvicorn backend.app:app --host 127.0.0.1 --port 8000 > /tmp/aeronova-api.log 2>&1 &
+          npm --prefix web run start > /tmp/aeronova-web.log 2>&1 &
+          python - <<'PYCODE'
+          import time, urllib.request
+          for url in ['http://127.0.0.1:8000/api/health', 'http://127.0.0.1:3000']:
+              for attempt in range(60):
+                  try:
+                      urllib.request.urlopen(url, timeout=2)
+                      break
+                  except Exception:
+                      time.sleep(1)
+              else:
+                  raise RuntimeError('Service startup failed')
+          PYCODE
+      - run: npm run test
+        working-directory: web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: {name: browser-failures, path: web/test-results/}

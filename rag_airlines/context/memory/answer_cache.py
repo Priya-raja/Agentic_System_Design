@@ -1,3 +1,4 @@
+from observability.logging import log_message
 from config import ROOT_DIR
 import hashlib
 import json
@@ -25,9 +26,7 @@ redis_client = redis.Redis.from_url(
 
 
 def normalize_question(question: str) -> str:
-    return " ".join(
-        question.lower().strip().split()
-    )
+    return " ".join(question.lower().strip().split())
 
 
 def get_index_hash() -> str:
@@ -59,9 +58,7 @@ def create_answer_cache_key(
         sort_keys=True,
     )
 
-    digest = hashlib.sha256(
-        serialized.encode("utf-8")
-    ).hexdigest()
+    digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
     return f"aeronova:answer:{digest}"
 
@@ -77,12 +74,12 @@ def get_cached_answer(
 
         payload = json.loads(value)
         if not cache_payload_allowed(payload):
-            print("Safety: cached payload requires review.")
+            log_message("Safety: cached payload requires review.")
             return None
         return payload
 
     except (RedisError, json.JSONDecodeError) as error:
-        print(f"Cache unavailable ({type(error).__name__})")
+        log_message(f"Cache unavailable ({type(error).__name__})")
         return None
 
 
@@ -94,7 +91,7 @@ def set_cached_answer(
 ) -> None:
     serialized = json.dumps(payload, default=str)
     if not cache_payload_allowed(payload):
-        print("Safety: sensitive or unsafe answer payload was not cached.")
+        log_message("Safety: sensitive or unsafe answer payload was not cached.")
         return
     try:
         redis_client.set(
@@ -104,4 +101,4 @@ def set_cached_answer(
         )
 
     except RedisError as error:
-        print(f"Could not cache answer ({type(error).__name__})")
+        log_message(f"Could not cache answer ({type(error).__name__})")

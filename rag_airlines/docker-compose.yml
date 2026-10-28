@@ -1,6 +1,6 @@
 services:
    vector-db:
-     image: qdrant/qdrant:latest
+     image: qdrant/qdrant:v1.18.3
      container_name: aeronova-qdrant
      ports:
         - "6333:6333"

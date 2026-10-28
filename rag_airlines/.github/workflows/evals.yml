@@ -1,0 +1,36 @@
+name: Optional paid RAGAS evaluation
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+jobs:
+  evaluate:
+    # No paid evaluation for untrusted forks; PR owners explicitly opt in with a label.
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.label.name == 'run-ragas')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: evaluations
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.18.3
+        ports: ['6333:6333']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
+      - run: pip install -c requirements.lock -e '.[dev,eval]'
+      - name: Build temporary evaluation index
+        run: python -m context.indexers.build_index
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      - run: python evals/run_ragas_eval.py --limit 10
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+      - uses: actions/upload-artifact@v4
+        with: {name: ragas-results, path: evals/results/}

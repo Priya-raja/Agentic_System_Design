@@ -1,0 +1,18 @@
+services:
+  api:
+    build: .
+    env_file: .env
+    environment:
+      QDRANT_URL: http://vector-db:6333
+      REDIS_URL: redis://redis:6379/0
+      ALLOWED_HOSTS: api,localhost,127.0.0.1
+      PUBLIC_ORIGIN: http://127.0.0.1:3000
+    ports: ["127.0.0.1:8000:8000"]
+    volumes: ["refund_state:/app/.runtime"]
+    depends_on: [vector-db, redis]
+  web:
+    build: ./web
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [api]
+volumes:
+  refund_state:
