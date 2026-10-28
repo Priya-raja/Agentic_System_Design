@@ -22,7 +22,15 @@ PDF_METADATA_TO_REMOVE = {
 def file_freshness_metadata(file_path: Path) -> dict:
     """Return stable metadata used to detect changed source files."""
 
-    content_hash = hashlib.sha256(file_path.read_bytes()).hexdigest()
+    content = file_path.read_bytes()
+    # Git checkouts may use LF while a local editor or platform writes CRLF.
+    # Normalize text line endings so equivalent policy text has one stable
+    # fingerprint on both local builds and Linux deployments. Keep binary
+    # assets (PDFs/images) byte-for-byte hashed.
+    if file_path.suffix.lower() in {".md", ".txt", ".csv", ".json", ".jsonl"}:
+        content = content.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+
+    content_hash = hashlib.sha256(content).hexdigest()
 
     return {
         "content_hash": content_hash,

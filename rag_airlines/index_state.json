@@ -1,7 +1,7 @@
 {
   "collection_name": "aeronova_public_knowledge",
   "schema_version": "departments-v5-routes",
-  "indexed_at": "2026-10-27T11:35:04.591517+00:00",
+  "indexed_at": "2026-10-28T05:21:18.919610+00:00",
   "documents": {
     "CAT-CABIN-MENU-2026.pdf": "cebf17fd37e50321633efc2f740677e759c88c135ddb39b4d84fcb5d8cb1f76e",
     "CAT-CABIN-ROUTES-2026.pdf": "81485d5bd8c209ef4851b4bb1648f58263b60e4b3cdfa35a5139a92b8e08c86b",
@@ -10,7 +10,7 @@
     "POL-BAG-2026.pdf": "ce5d93d91cc5057e3125974d09f7e00eaec0b5e0994c99985cacac3509de9445",
     "POL-CLAIM-2026.pdf": "edb4648ed140e321f1b7d14a1dbf2f3ffe3cef146d4ad17ebabad63c06d7fc7a",
     "POL-DIS-2026.pdf": "9b476505d58a1b4b456828c31a4aaefedb3725fe0586eda667e82329582ef35c",
-    "POL-EU261-2004.md": "b0f49ecf52aad19aa6218e2f47c2e7a741fd6b9793e594efafc384b079813b42",
+    "POL-EU261-2004.md": "b529371d9dcf1b032ea8329fa20b56d24bd3bc6e4384e27c1d2ecd0eb6e65760",
     "POL-REDEEM-2026.md": "37b30f06dae192225c24ed86964dd18e75eb11434edc80d43fa6934638ebfa05",
     "POL-REWARDS-2026.md": "14536d4bcba393335533b6668382dd1cbe280732deac78c60827c222ff9c5fb0",
     "POL-UPG-2026.pdf": "74cc8540fb479db8bee2a3f17a85c555830cf15ef0fd676bfa79010a7f68934f",
