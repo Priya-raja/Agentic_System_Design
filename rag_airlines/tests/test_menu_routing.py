@@ -46,3 +46,29 @@ def test_menu_reaches_retrieval_without_flight_identifiers():
     retrieve.assert_called_once_with(department='cabin_onboard', query='Menu from DXB to London')
     assert result['kind'] == 'no_context'  # Missing evidence, never missing flight identifiers.
     assert any(event['event'] == 'tool_end' for event in result['trace'])
+
+
+def test_retrieval_failure_is_logged_safely_and_returns_retry_guidance(caplog):
+    def fail_retrieval(**kwargs):
+        raise ConnectionError("embedding endpoint unavailable")
+
+    registry = ToolRegistry().register(Tool('retrieve_policy', PolicyArgs, fail_retrieval))
+    semantic = MagicMock()
+    semantic.lookup.return_value = None
+    session = ChatSession(
+        SimpleNamespace(prompt=PromptVersion('test', 'v4', 'fixture', 'hash')),
+        registry,
+        semantic,
+        cache_get=lambda key: None,
+        cache_set=MagicMock(),
+        synthesizer=MagicMock(),
+    )
+
+    result = session.ask('Show me the onboard menu')
+
+    assert result['kind'] == 'tool_error'
+    assert 'try again shortly' in result['answer']
+    assert 'policy_retrieval_failed' in caplog.text
+    diagnostic = next(record.details for record in caplog.records if record.message == 'policy_retrieval_failed')
+    assert diagnostic['type'] == 'ConnectionError'
+    assert diagnostic['reason'] == 'embedding endpoint unavailable'

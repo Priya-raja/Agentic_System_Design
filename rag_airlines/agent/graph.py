@@ -5,6 +5,7 @@ department, and only verified generated answers are published.
 """
 
 import asyncio
+import logging
 from typing import Any, TypedDict
 from langgraph.graph import StateGraph, START, END
 from opentelemetry import trace
@@ -26,8 +27,10 @@ from config import ANSWER_MODEL, NO_CONTEXT_CACHE_TTL_SECONDS
 from context.memory.answer_cache import create_answer_cache_key, get_index_hash
 from context.memory.semantic_answer_cache import semantic_cache_allowed
 from safety.heuristics import assess_user_input, is_standalone_insult, BLOCK, REVIEW
+from observability.logging import sanitize_for_log
 
 tracer = trace.get_tracer(__name__)
+log = logging.getLogger("aeronova.session")
 
 
 class RequestState(TypedDict, total=False):
@@ -217,15 +220,39 @@ def build_request_graph(session, *, event, respond, events, cancelled=None):
                 ok=True,
                 chunk_count=len(result.data.get("chunks", [])),
             )
-        except Exception:
+        except Exception as error:
+            # Retrieval can fail at either the embedding API or Qdrant. Keep
+            # the user response generic, but expose a sanitized diagnostic in
+            # Render logs so deployment issues can be fixed quickly.
+            error_reason = sanitize_for_log(str(error))[:500]
+            log.warning(
+                "policy_retrieval_failed",
+                extra={
+                    "details": {
+                        "tool": tool_name,
+                        "department": department or "metadata",
+                        "type": type(error).__name__,
+                        "reason": error_reason,
+                    }
+                },
+            )
             outputs.append(ToolResult.failure(tool_name, "retrieval failed", call_id=0))
-            event("tool_end", tool=tool_name, call_id=0, ok=False, chunk_count=0)
+            event(
+                "tool_end",
+                tool=tool_name,
+                call_id=0,
+                ok=False,
+                error_type=type(error).__name__,
+                chunk_count=0,
+            )
         if cancelled is not None and cancelled.is_set():
             return {"result": respond("Request cancelled.", "cancelled")}
         if any((not result.ok for result in outputs)):
             return {
                 "result": respond(
-                    "A required lookup failed; I cannot safely answer the complete request.", "tool_error"
+                    "I couldn't reach the policy search service just now, so I can't verify an answer. "
+                    "Please try again shortly.",
+                    "tool_error",
                 )
             }
         return {"outputs": outputs}
