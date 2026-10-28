@@ -12,9 +12,11 @@ load_dotenv(ROOT_DIR / ".env", override=False)
 CORPUS_ROOT = ROOT_DIR / "data"
 
 # Qdrant
-QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY") or None
+# QDRANT_API_KEY is loaded from the environment; never store it in source.
 QDRANT_COLLECTION = "aeronova_public_knowledge"
+# https://45e450e3-7cc9-44a4-a446-f378fe7e4b62.eu-central-1-0.aws.cloud.qdrant.io
 
 # Embeddings
 EMBEDDING_MODEL = "text-embedding-3-small"
