@@ -1,7 +1,8 @@
 from context.routes import menu_route
-from observability.logging import log_message
+from observability.logging import log_message, sanitize_for_log
 from config import ROOT_DIR, INDEX_SCHEMA_VERSION
 import json
+import logging
 import os
 import re
 from datetime import date, datetime
@@ -34,6 +35,7 @@ COLLECTION_NAME = QDRANT_COLLECTION
 INDEX_STATE_FILE = ROOT_DIR / "index_state.json"
 
 tracer = trace.get_tracer(__name__)
+log = logging.getLogger("aeronova.runtime")
 
 
 def legal_bm25_tokens(text: str) -> list[str]:
@@ -345,11 +347,28 @@ def hybrid_retrieve(
         )
 
         with measure_step("Dense search (embedding + Qdrant)"):
-            dense_results_with_scores = vector_store.similarity_search_with_score(
-                query=question,
-                k=dense_k,
-                filter=qdrant_filter,
-            )
+            try:
+                dense_results_with_scores = vector_store.similarity_search_with_score(
+                    query=question,
+                    k=dense_k,
+                    filter=qdrant_filter,
+                )
+            except Exception as error:
+                # BM25 is local and can still provide grounded evidence when
+                # the embedding API or Qdrant has a transient outage. The
+                # normal citation verifier remains the release gate.
+                dense_results_with_scores = []
+                reason = sanitize_for_log(str(error))[:500]
+                log.warning(
+                    "dense_retrieval_unavailable",
+                    extra={
+                        "message_text": (
+                            f"Dense search unavailable ({type(error).__name__}): {reason}. "
+                            "Continuing with BM25."
+                        )
+                    },
+                )
+                span.set_attribute("rag.dense_fallback", True)
 
         dense_documents = [
             document

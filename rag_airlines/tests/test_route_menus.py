@@ -57,3 +57,24 @@ def test_both_searches_and_final_results_exclude_reverse_route():
     assert result and all(doc.metadata["route"] == "LHR-DXB" for doc, _ in result)
     conditions = vector.similarity_search_with_score.call_args.kwargs["filter"].must
     assert any(c.key == "metadata.route" and c.match.value == "LHR-DXB" for c in conditions)
+
+
+def test_dense_search_failure_falls_back_to_department_filtered_bm25():
+    chunk = Document(
+        page_content="The London to Dubai menu includes a vegetarian dinner and refreshments.",
+        metadata={
+            "chunk_id": "MENU-LHR-DXB",
+            "route": "LHR-DXB",
+            "department": "cabin_onboard",
+            "topic": "menu",
+            "authority": "primary",
+            "policy_year": 2026,
+        },
+    )
+    vector = MagicMock()
+    vector.similarity_search_with_score.side_effect = ConnectionError("embedding service unavailable")
+
+    result = hybrid_retrieve("Menu from London to Dubai", [chunk], vector, department="cabin_onboard")
+
+    assert result
+    assert result[0][0].metadata["chunk_id"] == "MENU-LHR-DXB"
